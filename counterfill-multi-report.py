@@ -766,10 +766,6 @@ for medicaid in medicaids:
     medicaidrow += 1
 
 
-# create 340B Replenishment Check tab
-replenishchecktab = workbook.add_worksheet("340B Replenishment Check")
-replenishchecktab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-
 # create Acquisition Price Check tab
 acqpricetab = workbook.add_worksheet("Acquisition Price Check")
 acqpricetab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
