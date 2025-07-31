@@ -954,10 +954,6 @@ for report in report_identifiers:
     
 purchtab.autofilter(0, 0, purch_row, len(purch_headers)-1)
 
-# create Claim Breakdown tab
-claimtab = workbook.add_worksheet("Claim Breakdown")
-claimtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-
 # create NDC tab
 ndctab = workbook.add_worksheet("NDC")
 ndctab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
