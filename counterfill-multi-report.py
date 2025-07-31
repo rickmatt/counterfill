@@ -974,44 +974,6 @@ lowtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
 ndctab = workbook.add_worksheet("NDC")
 ndctab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
 
-# create TPA Audit Breakdown tab
-tpatab = workbook.add_worksheet("TPA Audit Breakdown")
-tpatab.set_tab_color("81A3A7")
-tpatab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-tpatab_headers = [
-    "Rx Number",
-    "Fill Number",
-    "Rx + Fill",
-    "Covered Entity",
-    "TPA",
-    "Date of Service",
-    "Prescriber name",
-    "Prescriber NPI",
-    "NDC",
-    "NDC Description",
-    "Indicator",
-    "Quantity Dispense",
-    "Total Paid Amount",
-    "Acquisition Cost",
-    "Retail Margin",
-    "Household",
-    "Patient DOB",
-    "Payor",
-    "BIN",
-    "PCN",
-    "Group",
-    "Days Supply",
-    "Dispense Fee",
-    "True Margin",
-    "Status",
-    "Qualification Date",
-    "NDC Replenished by 340B?",
-    "Manufacturer"
-]
-tpatab_row = 2
-for idx, header in enumerate(tpatab_headers):
-    tpatab.write(tpatab_row, idx, header, title_format)
-tpatab_row += 1
 
 # add to qc tab
 qcrow += 1
