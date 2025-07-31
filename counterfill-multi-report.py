@@ -766,10 +766,6 @@ for medicaid in medicaids:
     medicaidrow += 1
 
 
-# create Performance by NDC tab
-ndctab = workbook.add_worksheet("Performance by NDC")
-ndctab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-
 # create 340B Replenishment Check tab
 replenishchecktab = workbook.add_worksheet("340B Replenishment Check")
 replenishchecktab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
