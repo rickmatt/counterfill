@@ -321,20 +321,6 @@ pdd_duration = pdd_endtime - pdd_query_endtime
 ic(pdd_duration)
 
 
-# create 340b ndc breakdown tab
-ndctab = workbook.add_worksheet("340B NDC Breakdown")
-ndctab.set_tab_color("81A3A7")
-ndctab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-ndc_headers = [
-    "NDC", "Description", "Total Paid", "Retail Claim Count", "Retail Total Paid", 
-    "% Retail", "Retail Margin", "Avg. Retail Margin", "340B Claim Count", 
-    "340B Total Paid", "% 340B", "340B Margin", "Avg. 340B Margin", 
-    "PMS Reported Margin", "True Margin", "Avg. True Margin", 
-    "Difference", "340B Replenished <90 days?"
-]
-for idx, header in enumerate(ndc_headers):
-    ndctab.write(2, idx, header, title_format)
-
 # get ndcs for this report period
 # ndc_query = """SELECT DISTINCT ndc11 FROM counterfill_claims
 #     WHERE pharmacy_name = %s
