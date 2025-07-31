@@ -320,11 +320,6 @@ pdd_endtime = datetime.datetime.now()
 pdd_duration = pdd_endtime - pdd_query_endtime
 ic(pdd_duration)
 
-# create predictive 340b qualification tab
-predtab = workbook.add_worksheet("Predictive 340B Qualification")
-predtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-
-
 
 # create 340b ndc breakdown tab
 ndctab = workbook.add_worksheet("340B NDC Breakdown")
