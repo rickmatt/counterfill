@@ -966,9 +966,7 @@ retentiontab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary
 negtab = workbook.add_worksheet("<$0 Margin")
 negtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
 
-# create <$12 Margin tab
-lowtab = workbook.add_worksheet("<$12 Margin")
-lowtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
+
 
 # create NDC tab
 ndctab = workbook.add_worksheet("NDC")
