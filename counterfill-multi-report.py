@@ -958,14 +958,6 @@ purchtab.autofilter(0, 0, purch_row, len(purch_headers)-1)
 claimtab = workbook.add_worksheet("Claim Breakdown")
 claimtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
 
-# create 340B Retention tab
-retentiontab = workbook.add_worksheet("340B Retention")
-retentiontab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-
-
-
-
-
 # create NDC tab
 ndctab = workbook.add_worksheet("NDC")
 ndctab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
