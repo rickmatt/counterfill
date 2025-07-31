@@ -765,11 +765,6 @@ for medicaid in medicaids:
     medicaidtab.write(medicaidrow, medicaidcol, medicaid["state"])
     medicaidrow += 1
 
-
-# create Acquisition Price Check tab
-acqpricetab = workbook.add_worksheet("Acquisition Price Check")
-acqpricetab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-
 # create tpa qualified claims tab
 tpa_qc_tab = workbook.add_worksheet("TPA Qualified Claims")
 tpa_qc_tab.set_tab_color("81A3A7")
