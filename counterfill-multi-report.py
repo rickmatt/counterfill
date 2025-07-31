@@ -866,19 +866,24 @@ for report in report_identifiers:
 tpa_qc_tab.autofilter(0, 0, tpa_row, len(tpa_headers)-1)
 
 
+
 # create purchases tab
-purchtab = workbook.add_worksheet("Purchases")
+purchtab = workbook.add_worksheet("Replenishments")
 purchtab.set_tab_color("81A3A7")
 purchtab.set_column(0, 8, 15)
 purchtab.freeze_panes(1, 0)
 purch_row = 0
 purch_headers = [
-    'Purchased Date',
-    'NDC',
+    'Covered Entity',
+    'NDC11',
     'NDC Description',
-    'Pkgs',
-    'AccountType',
-    'Covered Entity']
+    'Indicator',
+    '340B Pkgs',
+    'Est Acq Cost Per Pkg',
+    'Ext Cost',
+    'Manufacturer',
+    'Replenishment Date',
+    'Input File']
 for idx, header in enumerate(purch_headers):
     purchtab.write(purch_row, idx, header, title_format)
 purch_row += 1
@@ -892,22 +897,31 @@ for report in report_identifiers:
     purchases = cursor.fetchall()
     for purchase in purchases:
         col = 0
-        purchtab.write(purch_row, col, purchase["replenishment_date"], date_format)
+        purchtab.write(purch_row, col, purchase["covered_entity"])
         col += 1
         purchtab.write(purch_row, col, purchase["ndc11"])
         col += 1
         purchtab.write(purch_row, col, purchase["drug_name"])
         col += 1
+        purchtab.write(purch_row, col, purchase["indicator"])
+        col += 1
         purchtab.write(purch_row, col, purchase["num_pkgs"])
         col += 1
-        purchtab.write(purch_row, col, "340B")
+        purchtab.write(purch_row, col, purchase["wac_price"], money)
         col += 1
-        purchtab.write(purch_row, col, purchase["covered_entity"])
+        purchtab.write(purch_row, col, purchase["extended_cost"], money)
+        col += 1
+        purchtab.write(purch_row, col, purchase["manufacturer"])
+        col += 1
+        purchtab.write(purch_row, col, purchase["replenishment_date"], date_format)
+        col += 1
+        purchtab.write(purch_row, col, purchase["input_file"])
 
 
         purch_row += 1
     
 purchtab.autofilter(0, 0, purch_row, len(purch_headers)-1)
+purchtab.set_column(9, 9, None, None, {'hidden': 1})
 
 # create NDC tab
 ndctab = workbook.add_worksheet("NDC")
