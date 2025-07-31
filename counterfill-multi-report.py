@@ -1013,10 +1013,6 @@ for idx, header in enumerate(tpatab_headers):
     tpatab.write(tpatab_row, idx, header, title_format)
 tpatab_row += 1
 
-# create Rx Review Drill Down
-rxreviewtab = workbook.add_worksheet("Rx Review Drill Down")
-rxreviewtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-
 # add to qc tab
 qcrow += 1
 qctab.write(qcrow, 2, "Count")
