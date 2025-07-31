@@ -962,9 +962,7 @@ claimtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
 retentiontab = workbook.add_worksheet("340B Retention")
 retentiontab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
 
-# create <$0 Margin tab
-negtab = workbook.add_worksheet("<$0 Margin")
-negtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
+
 
 
 
