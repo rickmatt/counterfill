@@ -765,12 +765,6 @@ for medicaid in medicaids:
     medicaidtab.write(medicaidrow, medicaidcol, medicaid["state"])
     medicaidrow += 1
 
-
-# create Performance by Payor tab
-payortab = workbook.add_worksheet("Performance by Payor")
-payortab.set_tab_color("81A3A7")
-payortab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-
 # create Performance by Household tab
 householdtab = workbook.add_worksheet("Performance by Household")
 householdtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
