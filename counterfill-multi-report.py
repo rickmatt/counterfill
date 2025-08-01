@@ -865,9 +865,32 @@ for report in report_identifiers:
     
 tpa_qc_tab.autofilter(0, 0, tpa_row, len(tpa_headers)-1)
 
+# create Accumulator tab
+print("creating Accumulator tab")
+accumtab = workbook.add_worksheet("Accumulator")
+accumtab.set_tab_color("81A3A7")
+accumtab.set_column(0, 11, 20)
+accumtab.freeze_panes(1, 0)
+accum_row = 0
+accum_headers = [
+    'Covered Entity',
+    'NDC11',
+    'NDC Description',
+    'Indicator',
+    '340B Pkgs',
+    'Prev Report Pkgs',
+    'Est Acq Cost Per Pkg',
+    'Ext Cost',
+    'Manufacturer',
+    'Accumulator Date',
+    'Last Replenishment Date',
+    'Input File']
+for idx, header in enumerate(accum_headers):
+    accumtab.write(accum_row, idx, header, title_format)
+accum_row += 1
 
-
-# create purchases tab
+# create Replenishments tab (using the old purchases tab, hence the odd variable names)
+print("creating Replenishments tab")
 purchtab = workbook.add_worksheet("Replenishments")
 purchtab.set_tab_color("81A3A7")
 purchtab.set_column(0, 8, 15)
