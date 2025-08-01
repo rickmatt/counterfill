@@ -889,6 +889,49 @@ for idx, header in enumerate(accum_headers):
     accumtab.write(accum_row, idx, header, title_format)
 accum_row += 1
 
+for report in report_identifiers:
+    accum_date = None
+    # get the max accumulator date for this report
+    accum_date_query = """SELECT MAX(accumulator_date) as max_date FROM accumulator
+        WHERE report_identifier = %s;"""
+    accum_date_inputs = (report["report_identifier"],)
+    cursor.execute(accum_date_query, accum_date_inputs)
+    accum_date_result = cursor.fetchone()
+    
+    accum_query = """SELECT * FROM accumulator
+        WHERE report_identifier = %s
+        AND accumulator_date = %s;"""
+    accum_inputs = (report["report_identifier"], accum_date_result["max_date"])
+    cursor.execute(accum_query, accum_inputs)
+    accumulators = cursor.fetchall()
+    for accumulator in accumulators:
+        col = 0
+        accumtab.write(accum_row, col, accumulator["covered_entity"])
+        col += 1
+        accumtab.write(accum_row, col, accumulator["ndc11"])
+        col += 1
+        accumtab.write(accum_row, col, accumulator["drug_name"])
+        col += 1
+        accumtab.write(accum_row, col, '@todo')
+        col += 1
+        accumtab.write(accum_row, col, accumulator["num_pkgs"])
+        col += 1
+        accumtab.write(accum_row, col, '')
+        col += 1
+        accumtab.write(accum_row, col, accumulator["wac_price"], money)
+        col += 1
+        accumtab.write(accum_row, col, accumulator["extended_cost"], money)
+        col += 1
+        accumtab.write(accum_row, col, accumulator["manufacturer"])
+        col += 1
+        accumtab.write(accum_row, col, accumulator["accumulator_date"], date_format)
+        col += 1
+        accumtab.write(accum_row, col, '')
+        col += 1
+        accumtab.write(accum_row, col, accumulator["input_file"])
+
+        accum_row += 1
+
 # create Replenishments tab (using the old purchases tab, hence the odd variable names)
 print("creating Replenishments tab")
 purchtab = workbook.add_worksheet("Replenishments")
