@@ -766,7 +766,7 @@ for medicaid in medicaids:
     medicaidrow += 1
 
 # create tpa qualified claims tab
-tpa_qc_tab = workbook.add_worksheet("Invoice Claims")
+tpa_qc_tab = workbook.add_worksheet("Invoices")
 tpa_qc_tab.set_tab_color("81A3A7")
 tpa_qc_tab.set_column(0, 27, 15)
 tpa_qc_tab.freeze_panes(1, 0)
@@ -795,7 +795,8 @@ tpa_headers = ['RxNumber',
 'Brand',
 'Covered Entity',
 'TPA',
-'Pharmacy',]
+'Pharmacy',
+'Input File']
 for idx, header in enumerate(tpa_headers):
     tpa_qc_tab.write(tpa_row, idx, header, title_format)
 tpa_row += 1
@@ -860,6 +861,8 @@ for report in report_identifiers:
         tpa_qc_tab.write(tpa_row, col, claim["tpa"])
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["pharmacy_name"])
+        col += 1
+        tpa_qc_tab.write(tpa_row, col, claim["input_file"])
 
         tpa_row += 1
     
