@@ -868,6 +868,34 @@ for report in report_identifiers:
     
 tpa_qc_tab.autofilter(0, 0, tpa_row, len(tpa_headers)-1)
 
+# create InvenSTORY tab
+print("creating InvenSTORY tab")
+inventab = workbook.add_worksheet("InvenSTORY")
+inventab.set_tab_color("81A3A7")
+inventab.set_column(0, 11, 20)
+inventab.freeze_panes(1, 0)
+inv_row = 0
+inv_headers = [
+    'Covered Entity',
+    'NDC',
+    'Description',
+    'Indicator',
+    'Manufacturer',
+    'Package Price',
+    'Dispensed Packages',
+    'Dispensed Value',
+    'Replenished Packages',
+    'Replenished Value',
+    'Variance',
+    'Variance Value',
+    'Accumulator Packages'
+]
+for idx, header in enumerate(inv_headers):
+    inventab.write(inv_row, idx, header, title_format)
+inv_row += 1
+
+
+
 # create Accumulator tab
 print("creating Accumulator tab")
 accumtab = workbook.add_worksheet("Accumulator")
