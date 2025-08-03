@@ -766,7 +766,7 @@ for medicaid in medicaids:
     medicaidrow += 1
 
 # create tpa qualified claims tab
-tpa_qc_tab = workbook.add_worksheet("TPA Qualified Claims")
+tpa_qc_tab = workbook.add_worksheet("Invoice Claims")
 tpa_qc_tab.set_tab_color("81A3A7")
 tpa_qc_tab.set_column(0, 27, 15)
 tpa_qc_tab.freeze_panes(1, 0)
