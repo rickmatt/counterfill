@@ -159,8 +159,10 @@ summarytab.write("B3", report_label, f_title)
 # create pharmacy dispensing data tab
 pddtab = workbook.add_worksheet("Pharmacy Dispensing Data")
 pddtab.set_tab_color("81A3A7")
-pddtab.set_column(0, 27, 15)
+pddtab.set_column(0, 29, 15)
 pddtab.freeze_panes(1, 0)
+pddtab.set_column(30, 30, None, None, {'hidden': 1})
+
 pdd_row = 0
 pdd_headers = ['Rx Number',
 'Fill Number',
@@ -1368,6 +1370,11 @@ for report_identifier in report_identifiers:
     accum_date_inputs = (report["report_identifier"],)
     cursor.execute(accum_date_query, accum_date_inputs)
     accum_date_result = cursor.fetchone()
+    # get the current accumulator filename
+    accum_filename_query = """SELECT input_file FROM accumulator WHERE report_identifier = %s AND accumulator_date = %s LIMIT 1;"""
+    accum_filename_inputs = (report["report_identifier"], accum_date_result["max_date"])
+    cursor.execute(accum_filename_query, accum_filename_inputs)
+    accum_filename_result = cursor.fetchone()
 
     # get the prev accumulator date
     prev_accum_date_query = """SELECT MAX(accumulator_date) as max_date FROM accumulator
@@ -1377,11 +1384,19 @@ for report_identifier in report_identifiers:
     cursor.execute(prev_accum_date_query, prev_accum_date_inputs)
     prev_accum_date_result = cursor.fetchone()
     ic(prev_accum_date_result)
+    # get the prev accumulator filename
+    prev_accum_filename_query = """SELECT input_file FROM accumulator WHERE report_identifier = %s AND accumulator_date = %s LIMIT 1;"""
+    prev_accum_filename_inputs = (report["report_identifier"], prev_accum_date_result["max_date"])
+    cursor.execute(prev_accum_filename_query, prev_accum_filename_inputs)
+    prev_accum_filename_result = cursor.fetchone()
+
     qctab.write(qcrow, 0, "accumulator input file")
-    qctab.write(qcrow, 1, accum_date_result["max_date"].strftime("%Y-%m-%d"))
+    qctab.write(qcrow, 1, accum_filename_result["input_file"])
+    qctab.write(qcrow, 2, accum_date_result["max_date"].strftime("%Y-%m-%d"))
     qcrow += 1
     qctab.write(qcrow, 0, "prev accumulator input file")
-    qctab.write(qcrow, 1, prev_accum_date_result["max_date"].strftime("%Y-%m-%d"))
+    qctab.write(qcrow, 1, prev_accum_filename_result["input_file"])
+    qctab.write(qcrow, 2, prev_accum_date_result["max_date"].strftime("%Y-%m-%d"))
     qcrow += 1
 qcrow += 1
 for report_identifier in report_identifiers:
