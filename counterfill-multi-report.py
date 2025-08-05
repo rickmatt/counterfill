@@ -761,37 +761,50 @@ for medicaid in medicaids:
     medicaidrow += 1
 
 # create invoices tab
-tpa_qc_tab = workbook.add_worksheet("Invoices")
+print("creating 340B Invoices tab")
+tpa_qc_tab = workbook.add_worksheet("340B Invoices")
 tpa_qc_tab.set_tab_color("81A3A7")
-tpa_qc_tab.set_column(0, 27, 15)
+tpa_qc_tab.set_column(0, 34, 15)
 tpa_qc_tab.freeze_panes(1, 0)
 tpa_row = 0
-tpa_headers = ['RxNumber',
-'FillNumber',
-'Rx+Fill',
-'Status',
-'Dispensed',
-'Doctor NPI',
-'NDC',
-'NDC Description',
-'Days Supply',
-'Amount',
-'Copay',
-'DispenseFee',
-'Revenue',
-'Quantity',
-'BUPP',
-'MHI Pkgs',
-'BIN',
-'PCN',
-'GRP',
-'Qualified Date',
-'Prescriber Last Name',
-'Brand',
-'Covered Entity',
-'TPA',
-'Pharmacy',
-'Input File']
+tpa_headers = [
+    "Rx Number",
+    "Fill Number",
+    "Rx + Fill",
+    "Fill Date",
+    "Bill Date",
+    "Pharmacy Name",
+    "NDC11",
+    "Drug Name",
+    "Last Replenished Date",
+    "Indicator",
+    "Manufacturer",
+    "Status",
+    "Quantity",
+    "Payment",
+    "Dispense Fee",
+    "Paid to CE",
+    "Est. Acquisition Cost Per Package",
+    "Est. Retail Margin",
+    "Est. Retail Margin %",
+    "Est 340B Impact",
+    "Uninsured",
+    "BIN",
+    "PCN",
+    "Group",
+    "BUPP",
+    "Packages",
+    "Prescriber NPI",
+    "Prescriber Name",
+    "CE",
+    "CE Type",
+    "TPA",
+    "Cash Impact",
+    "State",
+    "Invoicing Model",
+    "Input File"
+]
+
 for idx, header in enumerate(tpa_headers):
     tpa_qc_tab.write(tpa_row, idx, header, title_format)
 tpa_row += 1
@@ -809,6 +822,11 @@ for report in report_identifiers:
     ce_inputs = (report["report_identifier"],)
     cursor.execute(ce_query, ce_inputs)
     ce_results = cursor.fetchone()
+    # get report queue info
+    rq_query = """SELECT * FROM report_queue WHERE report_identifier = %s LIMIT 1;"""
+    rq_inputs = (report["report_identifier"],)
+    cursor.execute(rq_query, rq_inputs)
+    rq_results = cursor.fetchone()
     for claim in tpa_claims:
         # print(f"adding claim {claim['rx_number']}")
         col = 0
@@ -818,31 +836,60 @@ for report in report_identifiers:
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["rx_fill_concat"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["status"])
-        col += 1
         tpa_qc_tab.write(tpa_row, col, claim["fill_date"], date_format)
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["prescriber_npi"])
+        tpa_qc_tab.write(tpa_row, col, claim["bill_date"], date_format)
+        col += 1
+        tpa_qc_tab.write(tpa_row, col, ce_results["pharmacy"])
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["ndc"])
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["drug_name"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["days_supply"])
+        # get last replenished date from replenishments table
+        replenishment_query = """SELECT max(replenishment_date) FROM replenishments WHERE ndc11 = %s and report_identifier = %s;"""
+        replenishment_inputs = (claim["ndc"], claim["report_identifier"])
+        cursor.execute(replenishment_query, replenishment_inputs)
+        last_replenished_date = cursor.fetchone()
+        if last_replenished_date["max(replenishment_date)"] is None:
+            last_replenished_date["max(replenishment_date)"] = "Not replenished recently"
+        else:
+            last_replenished_date["max(replenishment_date)"] = last_replenished_date["max(replenishment_date)"].strftime("%Y-%m-%d")
+        tpa_qc_tab.write(tpa_row, col, last_replenished_date["max(replenishment_date)"], date_format)
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["total_payment"], money)
+        tpa_qc_tab.write(tpa_row, col, claim["indicator"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["copay"], money)
+        # get manuf from manuf_exclusions table
+        manuf_query = """SELECT manufacturer FROM manuf_exclusions WHERE ndc11 = %s LIMIT 1;"""
+        cursor.execute(manuf_query, (claim["ndc"],))
+        manuf_result = cursor.fetchone()
+        if manuf_result is None:
+            manuf = "Not restricted manufacturer"
+        else:
+            manuf = manuf_result["manufacturer"]
+        tpa_qc_tab.write(tpa_row, col, manuf)
+        col += 1
+        tpa_qc_tab.write(tpa_row, col, claim["status"])
+        col += 1
+        tpa_qc_tab.write(tpa_row, col, claim["qty_disp"])
+        col += 1
+        tpa_qc_tab.write(tpa_row, col, claim["transaction_payment"], money)
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["disp_fee"], money)
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["revenue"], money)
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["qty_disp"])
+        tpa_qc_tab.write(tpa_row, col, claim["pkg_cost"], money)
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["bupp"])
+        tpa_qc_tab.write(tpa_row, col, claim["retail_margin"], money)
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["pkgs_disp"])
+        est_ret_marg_pct = float(claim["retail_margin"]) / float(claim["transaction_payment"])
+        tpa_qc_tab.write(tpa_row, col, est_ret_marg_pct, pct_format2)
+        col += 1
+        est_340b_impact = float(claim["disp_fee"]) - float(claim["retail_margin"])
+        tpa_qc_tab.write(tpa_row, col, est_340b_impact, money)
+        col += 1
+        tpa_qc_tab.write(tpa_row, col, claim["uninsured"])
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["bin"])
         col += 1
@@ -850,24 +897,45 @@ for report in report_identifiers:
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["rx_group"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["bill_date"], date_format)
+        tpa_qc_tab.write(tpa_row, col, claim["bupp"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["prescriber_name"])
+        tpa_qc_tab.write(tpa_row, col, claim["pkgs_disp"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["indicator"])
+        tpa_qc_tab.write(tpa_row, col, claim["prescriber_npi"])
+        col += 1
+        prescriber_name = ""
+        if claim["prescriber_name"] == "":
+            # get prescriber name from counterfill_claims
+            prescriber_query = """SELECT prescriber_name FROM counterfill_claims WHERE prescriber_npi = %s LIMIT 1;"""
+            prescriber_inputs = (claim["prescriber_npi"],)
+            cursor.execute(prescriber_query, prescriber_inputs)
+            prescriber_result = cursor.fetchone()
+            if prescriber_result is None:
+                prescriber_name = ""
+            else:
+                prescriber_name = prescriber_result["prescriber_name"]
+        else:
+            prescriber_name = claim["prescriber_name"]
+        tpa_qc_tab.write(tpa_row, col, prescriber_name)
         col += 1
         tpa_qc_tab.write(tpa_row, col, ce_results["covered_entity"])
         col += 1
+        tpa_qc_tab.write(tpa_row, col, rq_results["ce_type"])  # Placeholder for ce type
+        col += 1
         tpa_qc_tab.write(tpa_row, col, claim["tpa"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, ce_results["pharmacy"])
+        tpa_qc_tab.write(tpa_row, col, "cash impact", money)
+        col += 1
+        tpa_qc_tab.write(tpa_row, col, rq_results["ce_state"])  # Placeholder for state
+        col += 1
+        tpa_qc_tab.write(tpa_row, col, rq_results["payment_model"])
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["input_file"])
 
         tpa_row += 1
     
 tpa_qc_tab.autofilter(0, 0, tpa_row, len(tpa_headers)-1)
-tpa_qc_tab.set_column(25, 25, None, None, {'hidden': 1})
+tpa_qc_tab.set_column(34, 34, None, None, {'hidden': 1})
 
 # create InvenSTORY tab
 print("creating InvenSTORY tab")
