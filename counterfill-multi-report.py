@@ -867,12 +867,13 @@ for report in report_identifiers:
         tpa_row += 1
     
 tpa_qc_tab.autofilter(0, 0, tpa_row, len(tpa_headers)-1)
+tpa_qc_tab.set_column(25, 25, None, None, {'hidden': 1})
 
 # create InvenSTORY tab
 print("creating InvenSTORY tab")
 inventab = workbook.add_worksheet("InvenSTORY")
 inventab.set_tab_color("81A3A7")
-inventab.set_column(0, 11, 20)
+inventab.set_column(0, 12, 20)
 inventab.freeze_panes(1, 0)
 inv_row = 0
 inv_headers = [
@@ -926,9 +927,11 @@ for report in report_identifiers:
         if drug_info is None:
             description = ""
             indicator = ""
+            package_price = None
         else:
             description = drug_info["description"]
             indicator = drug_info["indicator"]
+            package_price = drug_info["price"]
         # get manufacturer info from manuf_exclusions
         manuf_query = """SELECT * FROM manuf_exclusions WHERE ndc11 = %s LIMIT 1;"""
         cursor.execute(manuf_query, (inv_ndc["ndc"],))
@@ -947,6 +950,8 @@ for report in report_identifiers:
         inventab.write(inv_row, invs_col, indicator)
         invs_col += 1
         inventab.write(inv_row, invs_col, manufacturer)
+        invs_col += 1
+        inventab.write(inv_row, invs_col, package_price, money)
         invs_col += 1
 
         inv_row += 1
@@ -1021,7 +1026,7 @@ for report in report_identifiers:
 
         accum_row += 1
 accumtab.autofilter(0, 0, accum_row, len(accum_headers)-1)
-accumtab.set_column(10, 10, None, None, {'hidden': 1})
+accumtab.set_column(11, 11, None, None, {'hidden': 1})
 
 # create Replenishments tab (using the old purchases tab, hence the odd variable names)
 print("creating Replenishments tab")
