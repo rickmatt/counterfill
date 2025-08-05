@@ -1,4 +1,6 @@
-# script to create quarterly dir reports
+# script to create TrueView reports
+# Copyright 2025, Secure340B
+# Author: Rick Matthews
 
 import numbers
 import mysql.connector
