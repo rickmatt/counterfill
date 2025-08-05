@@ -903,12 +903,8 @@ for report in report_identifiers:
     report_info = cursor.fetchone()
     payment_model = report_info["payment_model"]
     data_source = report_info["data_source"]
-    if payment_model == "POR" or data_source == "Invoices":
-        invs_query = """SELECT DISTINCT ndc FROM 340b_claims WHERE bill_date BETWEEN %s AND %s AND report_identifier = %s
-            UNION
-            SELECT DISTINCT ndc11 as ndc FROM replenishments WHERE replenishment_date BETWEEN %s AND %s AND report_identifier = %s;"""
-    else:
-        invs_query = """SELECT DISTINCT ndc FROM 340b_claims WHERE fill_date BETWEEN %s AND %s AND report_identifier = %s
+
+    invs_query = """SELECT DISTINCT ndc FROM 340b_claims WHERE fill_date BETWEEN %s AND %s AND report_identifier = %s
             UNION
             SELECT DISTINCT ndc11 as ndc FROM replenishments WHERE replenishment_date BETWEEN %s AND %s AND report_identifier = %s;"""
     invs_input = (
