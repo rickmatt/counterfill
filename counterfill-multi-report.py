@@ -322,33 +322,6 @@ pdd_endtime = datetime.datetime.now()
 pdd_duration = pdd_endtime - pdd_query_endtime
 ic(pdd_duration)
 
-
-# get ndcs for this report period
-# ndc_query = """SELECT DISTINCT ndc11 FROM counterfill_claims
-#     WHERE pharmacy_name = %s
-#     AND year(fill_date) = %s
-#     AND month(fill_date) = %s;"""
-# ndc_inputs = (pharmacy_name, report_year, report_month)
-# cursor.execute(ndc_query, ndc_inputs)
-# ndcs = cursor.fetchall()
-# ndc_row = 3
-# for ndc in ndcs:
-#     ndccol = 0
-#     ndctab.write(ndc_row, ndccol, ndc["ndc11"])
-#     ndccol += 1
-#     # get drug name
-#     drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
-#     cursor.execute(drug_query, (ndc["ndc11"],))
-#     drug = cursor.fetchone()
-#     try:
-#         ndctab.write(ndc_row, ndccol, drug["description"])
-#     except:
-#         ndctab.write(ndc_row, ndccol, "")
-#     ndccol += 1
-
-#     ndc_row += 1
-
-
 # create Qualified Prescribers tab
 qptab = workbook.add_worksheet("Qualified Prescribers")
 qptab.set_tab_color("81A3A7")
