@@ -1006,6 +1006,15 @@ for report in report_identifiers:
     accum_date_inputs = (report["report_identifier"],)
     cursor.execute(accum_date_query, accum_date_inputs)
     accum_date_result = cursor.fetchone()
+
+    # get the prev accumulator date
+    prev_accum_date_query = """SELECT MAX(accumulator_date) as max_date FROM accumulator
+        WHERE report_identifier = %s
+        AND accumulator_date < %s;"""
+    prev_accum_date_inputs = (report["report_identifier"], accum_date_result["max_date"])
+    cursor.execute(prev_accum_date_query, prev_accum_date_inputs)
+    prev_accum_date_result = cursor.fetchone()
+    ic(prev_accum_date_result)
     
     accum_query = """SELECT * FROM accumulator
         WHERE report_identifier = %s
@@ -1054,7 +1063,17 @@ for report in report_identifiers:
         col += 1
         accumtab.write(accum_row, col, accumulator["num_pkgs"])
         col += 1
-        accumtab.write(accum_row, col, '')
+        if prev_accum_date_result["max_date"] is not None:
+            prev_accum_query = """SELECT IFNULL(SUM(num_pkgs), 0) as prev_pkgs FROM accumulator
+                WHERE ndc11 = %s
+                AND accumulator_date = %s
+                AND report_identifier = %s;"""
+            prev_accum_inputs = (accumulator["ndc11"], prev_accum_date_result["max_date"], report["report_identifier"])
+            cursor.execute(prev_accum_query, prev_accum_inputs)
+            prev_accum_result = cursor.fetchone()
+            accumtab.write(accum_row, col, prev_accum_result["prev_pkgs"])
+        else:
+            accumtab.write(accum_row, col, 0)
         col += 1
         accumtab.write(accum_row, col, accumulator["wac_price"], money)
         col += 1
