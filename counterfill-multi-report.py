@@ -177,6 +177,7 @@ pdd_headers = ['Rx Number',
 'Total Paid Amount',
 'Acquistion Cost',
 'Retail Margin',
+'Retail Margin %',
 'Household',
 'Patient DOB',
 'Payor',
@@ -190,7 +191,9 @@ pdd_headers = ['Rx Number',
 'Qualification Date',
 'NDC Replenished by 340B?',
 'Manufacturer',
-'Medicaid']
+'Medicaid',
+'Input File',
+]
 for idx, header in enumerate(pdd_headers):
     pddtab.write(pdd_row, idx, header, title_format)
 pdd_row += 1
@@ -291,6 +294,9 @@ for claim in pdd_claims:
     retail_margin = float(claim["total_payment"]) - float(claim["drug_cost"])
     pddtab.write(pdd_row, pdd_col, retail_margin, money)
     pdd_col += 1
+    retail_margin_pct = retail_margin / float(claim["total_payment"])
+    pddtab.write(pdd_row, pdd_col, retail_margin_pct, pct_format2)
+    pdd_col += 1
     pddtab.write(pdd_row, pdd_col, claim["pat_address"])
     pdd_col += 1
     pddtab.write(pdd_row, pdd_col, claim["pat_dob"], date_format)
@@ -319,6 +325,8 @@ for claim in pdd_claims:
     pddtab.write(pdd_row, pdd_col, claim["manufacturer"])
     pdd_col += 1
     pddtab.write(pdd_row, pdd_col, claim["medicaid"])
+    pdd_col += 1
+    pddtab.write(pdd_row, pdd_col, claim["input_file"])
     pdd_col += 1
 
     pdd_row += 1
