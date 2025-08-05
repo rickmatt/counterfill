@@ -1237,6 +1237,10 @@ for report_identifier in report_identifiers:
         qctab.write(qcrow, 3, replenishment["report_identifier"])
         qctab.write(qcrow, 4, "rep upload "+replenishment["date(timestamp)"].strftime("%Y-%m-%d"))
         qcrow += 1
+    qctab.write(qcrow, 0, "accumulator input file")
+    qcrow += 1
+    qctab.write(qcrow, 0, "prev accumulator input file")
+    qcrow += 1
 qcrow += 1
 for report_identifier in report_identifiers:
     qctab.write(qcrow, 0, "report_identifier")
