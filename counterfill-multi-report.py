@@ -1056,6 +1056,13 @@ for report in report_identifiers:
     accum_inputs = (report["report_identifier"], accum_date_result["max_date"])
     cursor.execute(accum_query, accum_inputs)
     accumulators = cursor.fetchall()
+
+    # get standard ce name from counterfill_meta
+    ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
+    ce_inputs = (report["report_identifier"],)
+    cursor.execute(ce_query, ce_inputs)
+    ce_results = cursor.fetchone()
+
     for accumulator in accumulators:
         # get drug_catalog info
         drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
@@ -1087,7 +1094,7 @@ for report in report_identifiers:
         else:
             accumulator["last_replenishment_date"] = "not recently replenished"
         col = 0
-        accumtab.write(accum_row, col, accumulator["covered_entity"])
+        accumtab.write(accum_row, col, ce_results["covered_entity"])
         col += 1
         accumtab.write(accum_row, col, accumulator["ndc11"])
         col += 1
@@ -1154,6 +1161,13 @@ for report in report_identifiers:
     purchase_inputs = (report["report_identifier"], report_start_date, report_end_date)
     cursor.execute(purchase_query, purchase_inputs)
     purchases = cursor.fetchall()
+
+    # get standard ce name from counterfill_meta
+    ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
+    ce_inputs = (report["report_identifier"],)
+    cursor.execute(ce_query, ce_inputs)
+    ce_results = cursor.fetchone()
+
     for purchase in purchases:
         # get drug_catalog info
         drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
@@ -1174,7 +1188,7 @@ for report in report_identifiers:
         else:
             purchase["manufacturer"] = manuf_info["manufacturer"]
         col = 0
-        purchtab.write(purch_row, col, purchase["covered_entity"])
+        purchtab.write(purch_row, col, ce_results["covered_entity"])
         col += 1
         purchtab.write(purch_row, col, purchase["ndc11"])
         col += 1
