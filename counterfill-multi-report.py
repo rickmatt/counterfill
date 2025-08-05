@@ -1044,6 +1044,35 @@ for report in report_identifiers:
     cursor.execute(accum_query, accum_inputs)
     accumulators = cursor.fetchall()
     for accumulator in accumulators:
+        # get drug_catalog info
+        drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
+        cursor.execute(drug_query, (accumulator["ndc11"],))
+        drug_info = cursor.fetchone()
+        if drug_info is None:
+            indicator = ""
+        else:
+            indicator = drug_info["indicator"]
+            if indicator is None:
+                indicator = ""
+        # get manuf_exclusions info
+        manuf_query = """SELECT * FROM manuf_exclusions WHERE ndc11 = %s LIMIT 1;"""
+        cursor.execute(manuf_query, (accumulator["ndc11"],))
+        manuf_info = cursor.fetchone()
+        if manuf_info is None:
+            accumulator["manufacturer"] = "Not restricted manufacturer"
+        else:
+            accumulator["manufacturer"] = manuf_info["manufacturer"]
+        # get the last replenishment date for this NDC
+        last_replenishment_query = """SELECT MAX(replenishment_date) as last_date FROM replenishments
+            WHERE ndc11 = %s
+            AND report_identifier = %s;"""
+        last_replenishment_inputs = (accumulator["ndc11"], report["report_identifier"])
+        cursor.execute(last_replenishment_query, last_replenishment_inputs)
+        last_replenishment_result = cursor.fetchone()
+        if last_replenishment_result["last_date"] is not None:
+            accumulator["last_replenishment_date"] = last_replenishment_result["last_date"]
+        else:
+            accumulator["last_replenishment_date"] = "not recently replenished"
         col = 0
         accumtab.write(accum_row, col, accumulator["covered_entity"])
         col += 1
@@ -1051,7 +1080,7 @@ for report in report_identifiers:
         col += 1
         accumtab.write(accum_row, col, accumulator["drug_name"])
         col += 1
-        accumtab.write(accum_row, col, '@todo')
+        accumtab.write(accum_row, col, indicator)
         col += 1
         accumtab.write(accum_row, col, accumulator["num_pkgs"])
         col += 1
@@ -1065,7 +1094,7 @@ for report in report_identifiers:
         col += 1
         accumtab.write(accum_row, col, accumulator["accumulator_date"], date_format)
         col += 1
-        accumtab.write(accum_row, col, '')
+        accumtab.write(accum_row, col, accumulator["last_replenishment_date"], date_format)
         col += 1
         accumtab.write(accum_row, col, accumulator["input_file"])
 
