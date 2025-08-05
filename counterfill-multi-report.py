@@ -238,7 +238,12 @@ for claim in pdd_claims:
         is340b_count += 1
         # print("340b claim")
         # ic(is340b_results)
-        covered_entity = is340b_results["covered_entity"]
+        # get standard ce name from counterfill_meta
+        ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
+        ce_inputs = (is340b_results["report_identifier"],)
+        cursor.execute(ce_query, ce_inputs)
+        ce_results = cursor.fetchone()
+        covered_entity = ce_results["covered_entity"] if ce_results else "Unknown"
         tpa = is340b_results["tpa"]
         disp_fee = is340b_results["disp_fee"]
         status = "340B"
@@ -379,22 +384,24 @@ for doctor in doctors:
     qpcol = 0
     qptab.write(qprow, qpcol, doctor)
     qpcol += 1
-    qpdoc_query = """SELECT covered_entity, count(*) 
+    qpdoc_query = """SELECT covered_entity, report_identifier, count(*) 
         FROM 340b_claims 
         WHERE prescriber_npi = %s 
         AND fill_date between %s AND %s
         AND report_identifier IN (SELECT report_identifier FROM counterfill_meta WHERE counterfill_name = %s)
-        GROUP BY covered_entity 
+        GROUP BY covered_entity, report_identifier
         ORDER BY count(*) DESC;"""
     cursor.execute(qpdoc_query, (doctor, report_start_date, report_end_date, pharmacy_name))
     qpdoc = cursor.fetchall()
 
-    ce_count_query = """SELECT DISTINCT(covered_entity) FROM 340b_claims 
+    ce_count_query = """SELECT DISTINCT(report_identifier) FROM 340b_claims 
         WHERE prescriber_npi = %s 
-        AND fill_date between %s AND %s;"""
-    ce_count_inputs = (doctor, report_start_date, report_end_date)
+        AND fill_date between %s AND %s
+        AND report_identifier IN (SELECT report_identifier FROM counterfill_meta WHERE counterfill_name = %s);"""
+    ce_count_inputs = (doctor, report_start_date, report_end_date, pharmacy_name)
     cursor.execute(ce_count_query, ce_count_inputs)
     ce_count = cursor.fetchall()
+    ic(ce_count)
 
     ic(ce_count, len(ce_count))
     qp2doc_query = """SELECT * FROM counterfill_claims WHERE prescriber_npi = %s ORDER BY id DESC LIMIT 1;"""
@@ -406,7 +413,12 @@ for doctor in doctors:
     qpcol += 1
     qptab.write(qprow, qpcol, qp_pct, pct_format2)
     qpcol += 1
-    qptab.write(qprow, qpcol, qpdoc[0]["covered_entity"])
+    # get standard ce name from counterfill_meta
+    ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
+    ce_inputs = (qpdoc[0]["report_identifier"],)
+    cursor.execute(ce_query, ce_inputs)
+    ce_results = cursor.fetchone()
+    qptab.write(qprow, qpcol, ce_results["covered_entity"])
     qpcol += 1
     if len(ce_count) == 1:
         qptab.write(qprow, qpcol, "NO")
@@ -417,9 +429,14 @@ for doctor in doctors:
     ces = ""
     ces_count = 0
     for ce1 in ce_count:
+        # get standard ce name from counterfill_meta
+        ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
+        ce_inputs = (ce1["report_identifier"],)
+        cursor.execute(ce_query, ce_inputs)
+        ce_results = cursor.fetchone()
         if ces_count >= 1:
             ces += "; "
-        ces += ce1["covered_entity"]
+        ces += ce_results["covered_entity"]
         ces_count += 1
     print(ces)
     qpcol += 1
@@ -608,7 +625,13 @@ for doctor in qual_npi_list:
         ic(ever_results)
         if ever_results:
             tpa_audit_tab.write(tpa_row, col, ever_results["fill_date"], date_format)
-            ce = ever_results["covered_entity"]
+            # get standard ce name from counterfill_meta
+            ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
+            ce_inputs = (ever_results["report_identifier"],)
+            cursor.execute(ce_query, ce_inputs)
+            ce_results = cursor.fetchone()
+            if ce_results:
+                ce = ce_results["covered_entity"]
         else:
             tpa_audit_tab.write(tpa_row, col, "NO")
             ce = ""
@@ -1237,9 +1260,27 @@ for report_identifier in report_identifiers:
         qctab.write(qcrow, 3, replenishment["report_identifier"])
         qctab.write(qcrow, 4, "rep upload "+replenishment["date(timestamp)"].strftime("%Y-%m-%d"))
         qcrow += 1
+    accum_date = None
+    # get the max accumulator date for this report
+    accum_date_query = """SELECT MAX(accumulator_date) as max_date FROM accumulator
+        WHERE report_identifier = %s;"""
+    accum_date_inputs = (report["report_identifier"],)
+    cursor.execute(accum_date_query, accum_date_inputs)
+    accum_date_result = cursor.fetchone()
+
+    # get the prev accumulator date
+    prev_accum_date_query = """SELECT MAX(accumulator_date) as max_date FROM accumulator
+        WHERE report_identifier = %s
+        AND accumulator_date < %s;"""
+    prev_accum_date_inputs = (report["report_identifier"], accum_date_result["max_date"])
+    cursor.execute(prev_accum_date_query, prev_accum_date_inputs)
+    prev_accum_date_result = cursor.fetchone()
+    ic(prev_accum_date_result)
     qctab.write(qcrow, 0, "accumulator input file")
+    qctab.write(qcrow, 1, accum_date_result["max_date"].strftime("%Y-%m-%d"))
     qcrow += 1
     qctab.write(qcrow, 0, "prev accumulator input file")
+    qctab.write(qcrow, 1, prev_accum_date_result["max_date"].strftime("%Y-%m-%d"))
     qcrow += 1
 qcrow += 1
 for report_identifier in report_identifiers:
