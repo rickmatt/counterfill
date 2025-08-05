@@ -893,6 +893,64 @@ inv_headers = [
 for idx, header in enumerate(inv_headers):
     inventab.write(inv_row, idx, header, title_format)
 inv_row += 1
+for report in report_identifiers:
+    report_sql = """SELECT * FROM report_queue WHERE report_identifier = %s;"""
+    report_inputs = (report["report_identifier"],)
+    cursor.execute(report_sql, report_inputs)
+    report_info = cursor.fetchone()
+    payment_model = report_info["payment_model"]
+    data_source = report_info["data_source"]
+    if payment_model == "POR" or data_source == "Invoices":
+        invs_query = """SELECT DISTINCT ndc FROM 340b_claims WHERE bill_date BETWEEN %s AND %s AND report_identifier = %s
+            UNION
+            SELECT DISTINCT ndc11 as ndc FROM replenishments WHERE replenishment_date BETWEEN %s AND %s AND report_identifier = %s;"""
+    else:
+        invs_query = """SELECT DISTINCT ndc FROM 340b_claims WHERE fill_date BETWEEN %s AND %s AND report_identifier = %s
+            UNION
+            SELECT DISTINCT ndc11 as ndc FROM replenishments WHERE replenishment_date BETWEEN %s AND %s AND report_identifier = %s;"""
+    invs_input = (
+        report_start_date,
+        report_end_date,
+        report_info["report_identifier"],
+        report_start_date,
+        report_end_date,
+        report_info["report_identifier"],
+    )
+    cursor.execute(invs_query, invs_input)
+    invs_ndcs = cursor.fetchall()
+    for inv_ndc in invs_ndcs:
+        # get drug info from drug_catalog
+        drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
+        cursor.execute(drug_query, (inv_ndc["ndc"],))
+        drug_info = cursor.fetchone()
+        if drug_info is None:
+            description = ""
+            indicator = ""
+        else:
+            description = drug_info["description"]
+            indicator = drug_info["indicator"]
+        # get manufacturer info from manuf_exclusions
+        manuf_query = """SELECT * FROM manuf_exclusions WHERE ndc11 = %s LIMIT 1;"""
+        cursor.execute(manuf_query, (inv_ndc["ndc"],))
+        manuf_info = cursor.fetchone()
+        if manuf_info is None:
+            manufacturer = "Not restricted manufacturer"
+        else:
+            manufacturer = manuf_info["manufacturer"]
+        invs_col = 0
+        inventab.write(inv_row, invs_col, report_info["covered_entity"])
+        invs_col += 1
+        inventab.write(inv_row, invs_col, inv_ndc["ndc"])
+        invs_col += 1
+        inventab.write(inv_row, invs_col, description)
+        invs_col += 1
+        inventab.write(inv_row, invs_col, indicator)
+        invs_col += 1
+        inventab.write(inv_row, invs_col, manufacturer)
+        invs_col += 1
+
+        inv_row += 1
+inventab.autofilter(0, 0, inv_row, len(inv_headers)-1)
 
 
 
@@ -962,6 +1020,8 @@ for report in report_identifiers:
         accumtab.write(accum_row, col, accumulator["input_file"])
 
         accum_row += 1
+accumtab.autofilter(0, 0, accum_row, len(accum_headers)-1)
+accumtab.set_column(10, 10, None, None, {'hidden': 1})
 
 # create Replenishments tab (using the old purchases tab, hence the odd variable names)
 print("creating Replenishments tab")
