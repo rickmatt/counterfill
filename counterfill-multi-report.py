@@ -760,7 +760,7 @@ for medicaid in medicaids:
     medicaidtab.write(medicaidrow, medicaidcol, medicaid["state"])
     medicaidrow += 1
 
-# create tpa qualified claims tab
+# create invoices tab
 tpa_qc_tab = workbook.add_worksheet("Invoices")
 tpa_qc_tab.set_tab_color("81A3A7")
 tpa_qc_tab.set_column(0, 27, 15)
@@ -804,6 +804,11 @@ for report in report_identifiers:
     tpa_inputs = (report["report_identifier"], report_start_date, report_end_date)
     cursor.execute(tpa_query, tpa_inputs)
     tpa_claims = cursor.fetchall()
+    # get standard ce and pharm name from counterfill_meta
+    ce_query = """SELECT covered_entity, pharmacy FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
+    ce_inputs = (report["report_identifier"],)
+    cursor.execute(ce_query, ce_inputs)
+    ce_results = cursor.fetchone()
     for claim in tpa_claims:
         # print(f"adding claim {claim['rx_number']}")
         col = 0
@@ -851,11 +856,11 @@ for report in report_identifiers:
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["indicator"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["covered_entity"])
+        tpa_qc_tab.write(tpa_row, col, ce_results["covered_entity"])
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["tpa"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["pharmacy_name"])
+        tpa_qc_tab.write(tpa_row, col, ce_results["pharmacy"])
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["input_file"])
 
@@ -960,8 +965,14 @@ for report in report_identifiers:
         cursor.execute(accumulator_query, accumulator_inputs)
         accumulator_result = cursor.fetchone()
 
+        # get standard ce name from counterfill_meta
+        ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
+        ce_inputs = (report["report_identifier"],)
+        cursor.execute(ce_query, ce_inputs)
+        ce_results = cursor.fetchone()
+
         invs_col = 0
-        inventab.write(inv_row, invs_col, report_info["covered_entity"])
+        inventab.write(inv_row, invs_col, ce_results["covered_entity"])
         invs_col += 1
         inventab.write(inv_row, invs_col, inv_ndc["ndc"])
         invs_col += 1
