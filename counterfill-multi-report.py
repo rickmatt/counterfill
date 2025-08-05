@@ -1292,10 +1292,44 @@ for report in report_identifiers:
 purchtab.autofilter(0, 0, purch_row, len(purch_headers)-1)
 purchtab.set_column(9, 9, None, None, {'hidden': 1})
 
-# create NDC tab
-ndctab = workbook.add_worksheet("NDC")
-ndctab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
+# create hidden Data Feed Tab
+print("creating Data Feed tab")
+datafeedtab = workbook.add_worksheet("Data Feed Tab")
+datafeedtab.set_tab_color("81A3A7")
+datafeedtab.set_column(0, 20, 15)
+df_headers = ["Total Payment", 
+              "Dispensing Fee", 
+              "Paid to CE", 
+              "Est. 340B Net Impact", 
+              "Accumulator Value", 
+              "340B Financial Impact", 
+              "340B Inventory Impact", 
+              "Manufacturer Restrictions", 
+              "TPA Accuracy"]
+df_row = 0
+for idx, header in enumerate(df_headers):
+    datafeedtab.write(df_row, idx+1, header)
+df_row += 1
+for report in report_identifiers:
+    datafeedtab.write(df_row, 0, report["report_identifier"])
+    df_row += 1
 
+
+df2_row = 0
+df2_col = 11
+datafeedtab.write(df2_row, df2_col, "Previous Quarter Values")
+df2_col += 1
+for report in report_identifiers:
+    datafeedtab.write(df2_row, df2_col, report["report_identifier"])
+    df2_col += 1
+df2_row += 1
+df2_col = 11
+mrl_sql = """SELECT manufacturer FROM manuf_exclusions GROUP BY manufacturer;"""
+cursor.execute(mrl_sql)
+mrl_records = cursor.fetchall()
+for mrl_record in mrl_records:
+    datafeedtab.write(df2_row, df2_col, mrl_record["manufacturer"])
+    df2_row += 1
 
 # add to qc tab
 qcrow += 1
