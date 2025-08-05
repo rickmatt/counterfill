@@ -348,9 +348,6 @@ ic(pdd_duration)
 
 #     ndc_row += 1
 
-# create RXs for review tab
-rxreviewtab = workbook.add_worksheet("RXs for Review")
-rxreviewtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
 
 # create Qualified Prescribers tab
 qptab = workbook.add_worksheet("Qualified Prescribers")
@@ -1132,6 +1129,24 @@ for report in report_identifiers:
     cursor.execute(purchase_query, purchase_inputs)
     purchases = cursor.fetchall()
     for purchase in purchases:
+        # get drug_catalog info
+        drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
+        cursor.execute(drug_query, (purchase["ndc11"],))
+        drug_info = cursor.fetchone()
+        if drug_info is None:
+            purchase["indicator"] = ""
+        else:
+            purchase["indicator"] = drug_info["indicator"]
+            if purchase["indicator"] is None:
+                purchase["indicator"] = ""
+        # get manuf_exclusions info
+        manuf_query = """SELECT * FROM manuf_exclusions WHERE ndc11 = %s LIMIT 1;"""
+        cursor.execute(manuf_query, (purchase["ndc11"],))
+        manuf_info = cursor.fetchone()
+        if manuf_info is None:
+            purchase["manufacturer"] = "Not restricted manufacturer"
+        else:
+            purchase["manufacturer"] = manuf_info["manufacturer"]
         col = 0
         purchtab.write(purch_row, col, purchase["covered_entity"])
         col += 1
