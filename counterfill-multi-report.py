@@ -932,6 +932,7 @@ for report in report_identifiers:
             description = drug_info["description"]
             indicator = drug_info["indicator"]
             package_price = drug_info["price"]
+
         # get manufacturer info from manuf_exclusions
         manuf_query = """SELECT * FROM manuf_exclusions WHERE ndc11 = %s LIMIT 1;"""
         cursor.execute(manuf_query, (inv_ndc["ndc"],))
@@ -940,6 +941,16 @@ for report in report_identifiers:
             manufacturer = "Not restricted manufacturer"
         else:
             manufacturer = manuf_info["manufacturer"]
+
+        # get dispensed packages
+        dispensed_query = """SELECT IFNULL(SUM(pkgs_disp), 0) as pkgs_dispensed FROM 340b_claims
+            WHERE ndc = %s
+            AND fill_date BETWEEN %s AND %s
+            AND report_identifier = %s;"""
+        dispensed_inputs = (inv_ndc["ndc"], report_start_date, report_end_date, report_info["report_identifier"])
+        cursor.execute(dispensed_query, dispensed_inputs)
+        dispensed_result = cursor.fetchone()
+
         invs_col = 0
         inventab.write(inv_row, invs_col, report_info["covered_entity"])
         invs_col += 1
@@ -953,6 +964,12 @@ for report in report_identifiers:
         invs_col += 1
         inventab.write(inv_row, invs_col, package_price, money)
         invs_col += 1
+        inventab.write(inv_row, invs_col, dispensed_result["pkgs_dispensed"])
+        invs_col += 1
+        disp_value = float(dispensed_result["pkgs_dispensed"]) * float(package_price) if package_price else 0
+        inventab.write(inv_row, invs_col, disp_value, money)
+        invs_col += 1
+
 
         inv_row += 1
 inventab.autofilter(0, 0, inv_row, len(inv_headers)-1)
