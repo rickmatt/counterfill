@@ -15,9 +15,9 @@ import numpy
 
 starttime = datetime.datetime.now()
 # report_period looks like "2025-03"
-report_period = "2025-06"
+report_period = "2025-07"
 # report_label looks like "2025-3"
-report_label = "2025-6"
+report_label = "2025-7"
 report_year = int(report_period.split("-")[0])
 report_month = int(report_period.split("-")[1])
 this_month = report_month
