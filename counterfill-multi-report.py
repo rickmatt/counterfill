@@ -507,6 +507,15 @@ for report in report_identifiers:
 ic(manuf_concat)
 
 # create TPA Rx Review tab
+# get list of doctors with 340b claims at this pharmacy
+# get list of rxs from counterfill_claims for these doctors
+# throw out any rxs that are already in counterfill_audit_rxs
+# throw out any rxs that are with unqualified manufacturers
+# throw out any rxs that are already 340B qualified
+# throw out any rxs that are not profitable enough
+# add the rest to counterfill_audit_rxs
+# put the rest in the TPA Rx Review tab
+
 # clean up counterfill_audit_rxs table if this report is being rerun
 cursor.execute("DELETE FROM counterfill_audit_rxs WHERE pharmacy = %s AND report_period = %s;", (pharmacy_name, report_period))
 print("creating TPA RX Review tab")
@@ -910,7 +919,10 @@ for report in report_identifiers:
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["retail_margin"], money)
         col += 1
-        est_ret_marg_pct = float(claim["retail_margin"]) / float(claim["transaction_payment"])
+        try:
+            est_ret_marg_pct = float(claim["retail_margin"]) / float(claim["transaction_payment"])
+        except ZeroDivisionError:
+            est_ret_marg_pct = 0.0
         tpa_qc_tab.write(tpa_row, col, est_ret_marg_pct, pct_format2)
         col += 1
         est_340b_impact = float(claim["disp_fee"]) - float(claim["retail_margin"])
