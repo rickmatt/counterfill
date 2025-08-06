@@ -156,6 +156,8 @@ summarytab.write("B1", report["salesforce_report_name"], f_title)
 summarytab.write("B2", "Secure340B Counterfill Report", f_title)
 summarytab.write("B3", report_label, f_title)
 
+datafeedtab = workbook.add_worksheet("Data Feed Tab")
+
 # create pharmacy dispensing data tab
 pddtab = workbook.add_worksheet("Pharmacy Dispensing Data")
 pddtab.set_tab_color("81A3A7")
@@ -1294,7 +1296,6 @@ purchtab.set_column(9, 9, None, None, {'hidden': 1})
 
 # create hidden Data Feed Tab
 print("creating Data Feed tab")
-datafeedtab = workbook.add_worksheet("Data Feed Tab")
 datafeedtab.set_tab_color("81A3A7")
 datafeedtab.set_column(0, 20, 15)
 df_headers = ["Total Payment", 
