@@ -506,10 +506,10 @@ for report in report_identifiers:
 
 ic(manuf_concat)
 
-# create TPA Audit RXs tab
+# create TPA Rx Review tab
 # clean up counterfill_audit_rxs table if this report is being rerun
 cursor.execute("DELETE FROM counterfill_audit_rxs WHERE pharmacy = %s AND report_period = %s;", (pharmacy_name, report_period))
-print("creating TPA Audit RXs tab")
+print("creating TPA RX Review tab")
 tpa_audit_tab = workbook.add_worksheet("TPA Rx Review")
 tpa_audit_tab.set_tab_color("81A3A7")
 tpa_audit_tab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
@@ -571,16 +571,9 @@ for doctor in qual_npi_list:
             # audit_results = cursor.fetchone()
             # first_audit_period = audit_results["report_period"]
             audit_skips += 1
+            print(f"Skipping {prescription['rx_fill_concat']} - already audited")
             continue
-        else:
-            first_audit_period = ""
-            record_sql = """INSERT INTO counterfill_audit_rxs
-            (pharmacy, rx_fill_num, ndc11, report_period)
-            VALUES (%s, %s, %s, %s);"""
-            record_inputs = (pharmacy_name, prescription["rx_fill_concat"], prescription["ndc11"], report_period)
-            ic(record_inputs)
-            cursor.execute(record_sql, record_inputs)
-            conn.commit()
+            
         if prescription["manufacturer"] not in qms_list:
             print(f"{prescription["manufacturer"]} not in manuf list")
             continue
@@ -608,6 +601,17 @@ for doctor in qual_npi_list:
         pharmacy_impact = float(prescription["est_disp_fee"])-float(prescription["retail_margin"])
         if pharmacy_impact < 20:
             continue
+
+        # Record the first audit period
+        first_audit_period = ""
+        record_sql = """INSERT INTO counterfill_audit_rxs
+        (pharmacy, rx_fill_num, ndc11, report_period)
+        VALUES (%s, %s, %s, %s);"""
+        record_inputs = (pharmacy_name, prescription["rx_fill_concat"], prescription["ndc11"], report_period)
+        ic(record_inputs)
+        cursor.execute(record_sql, record_inputs)
+        conn.commit()
+
         col = 0
         tpa_audit_tab.write(tpa_row, col, prescription["rx_number"])
         col += 1
@@ -671,6 +675,7 @@ tpa_audit_tab.autofilter(2, 0, tpa_row, len(tpa_headers)-1)
 
 
 # create TPA Rx Review - ROI tab
+print("creating TPA Rx Review - ROI tab")
 roitab = workbook.add_worksheet("TPA Rx Review - ROI Tab")
 roitab.set_tab_color("81A3A7")
 roitab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
@@ -698,6 +703,7 @@ roi_query = """SELECT * FROM counterfill_audit_rxs WHERE pharmacy = %s ORDER BY 
 roi_inputs = (pharmacy_name,)
 cursor.execute(roi_query, roi_inputs)
 roi_candidates = cursor.fetchall()
+print(len(roi_candidates), "roi candidates found")
 for roi_candidate in roi_candidates:
     # get pharm_data prescription info
     pharm_query = """SELECT * FROM counterfill_claims WHERE pharmacy_name = %s AND rx_fill_concat = %s;"""
@@ -721,10 +727,12 @@ for roi_candidate in roi_candidates:
         status = roi340b_data["status"]
         ever340b = roi340b_data["fill_date"]
         disp_fee = roi340b_data["disp_fee"]
-        pharmacy_impact = float(roi340b_data["disp_fee"]) - float(roi340b_data["retail_margin"])
+        pharmacy_impact = float(roi340b_data["disp_fee"]) - float(pharm_data["retail_margin"])
         if pharmacy_impact < 0:
+            print(f"Skipping {roi_candidate['rx_fill_num']} - pharmacy impact is negative")
             continue
     if pharmacy_impact == 0 and pharm_data["fill_date"] < datetime.datetime.strptime(report_start_date, "%Y-%m-%d").date():
+        print(f"Skipping {roi_candidate['rx_fill_num']} - impact 0 and old date")
         continue
     est_paid_to_ce = float(pharm_data["total_payment"]) - float(pharm_data["est_disp_fee"])
     roitab.write(roirow, 0, str(roi_candidate["rx_fill_num"].split("-")[0]))
@@ -745,6 +753,7 @@ for roi_candidate in roi_candidates:
 roitab.autofilter(2, 0, roirow, len(roi_headers)-1)
 
 # create Medicaid plan tab
+print()
 medicaidtab = workbook.add_worksheet("Medicaid Plan Info")
 medicaidtab.set_tab_color("81A3A7")
 medicaidtab.set_column(0, 12, 20)
