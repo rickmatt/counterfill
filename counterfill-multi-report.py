@@ -728,6 +728,12 @@ for roi_candidate in roi_candidates:
         ever340b = roi340b_data["fill_date"]
         disp_fee = roi340b_data["disp_fee"]
         pharmacy_impact = float(roi340b_data["disp_fee"]) - float(pharm_data["retail_margin"])
+        # save pharmacy impact to counterfill_audit_rxs
+        update_sql = """UPDATE counterfill_audit_rxs SET impact = %s
+            WHERE rx_fill_num = %s AND pharmacy = %s;"""
+        update_inputs = (pharmacy_impact, roi_candidate["rx_fill_num"], pharmacy_name)
+        cursor.execute(update_sql, update_inputs)
+        conn.commit()
         if pharmacy_impact < 0:
             print(f"Skipping {roi_candidate['rx_fill_num']} - pharmacy impact is negative")
             continue
