@@ -1101,10 +1101,10 @@ for report in report_identifiers:
         replenished_value = float(replenished_result["pkgs_dispensed"]) * float(package_price) if package_price else 0
         inventab.write(inv_row, invs_col, replenished_value, money)
         invs_col += 1
-        variance_pkgs = float(replenished_result["pkgs_dispensed"]) - float(dispensed_result["pkgs_dispensed"])
+        variance_pkgs = float(dispensed_result["pkgs_dispensed"]) -float(replenished_result["pkgs_dispensed"])
         inventab.write(inv_row, invs_col, variance_pkgs)
         invs_col += 1
-        variance_value = replenished_value - disp_value
+        variance_value = disp_value - replenished_value
         inventab.write(inv_row, invs_col, variance_value, money)
         invs_col += 1
         inventab.write(inv_row, invs_col, accumulator_result["pkgs_dispensed"])
