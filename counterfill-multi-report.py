@@ -1292,6 +1292,9 @@ for report in report_identifiers:
     ce_results = cursor.fetchone()
 
     for purchase in purchases:
+        if purchase["status"] == "810 Received – Order Not Found":
+            print(f"Skipping {purchase['ndc11']} - status is '810 Received - Order Not Found'")
+            continue
         # get drug_catalog info
         drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
         cursor.execute(drug_query, (purchase["ndc11"],))
