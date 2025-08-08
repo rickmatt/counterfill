@@ -918,7 +918,7 @@ for report in report_identifiers:
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["status"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["qty_disp"])
+        tpa_qc_tab.write(tpa_row, col, claim["qty_replenished"])
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["transaction_payment"], money)
         col += 1
@@ -974,7 +974,9 @@ for report in report_identifiers:
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["tpa"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, "cash impact", money)
+        # (num_pkgs * pkg_cost) - transaction_payment
+        cash_impact = (float(claim["pkgs_disp"]) * float(claim["pkg_cost"])) - float(claim["transaction_payment"])
+        tpa_qc_tab.write(tpa_row, col, round(cash_impact, 2), money)
         col += 1
         tpa_qc_tab.write(tpa_row, col, rq_results["ce_state"])  # Placeholder for state
         col += 1
