@@ -847,9 +847,20 @@ tpa_row += 1
 
 for report in report_identifiers:
     print(f"adding claims for {report['report_identifier']}")
-    tpa_query = """SELECT * FROM 340b_claims
-        WHERE report_identifier = %s
-        AND fill_date BETWEEN %s AND %s;"""
+    report_sql = """SELECT * FROM report_queue WHERE report_identifier = %s;"""
+    report_inputs = (report["report_identifier"],)
+    cursor.execute(report_sql, report_inputs)
+    report_info = cursor.fetchone()
+    payment_model = report_info["payment_model"]
+    data_source = report_info["data_source"]
+    if payment_model == "POR" or data_source == "Invoices":
+        tpa_query = """SELECT * FROM 340b_claims
+            WHERE report_identifier = %s
+            AND bill_date BETWEEN %s AND %s;"""
+    else:
+        tpa_query = """SELECT * FROM counterfill_claims
+            WHERE report_identifier = %s
+            AND fill_date BETWEEN %s AND %s;"""
     tpa_inputs = (report["report_identifier"], report_start_date, report_end_date)
     cursor.execute(tpa_query, tpa_inputs)
     tpa_claims = cursor.fetchall()
