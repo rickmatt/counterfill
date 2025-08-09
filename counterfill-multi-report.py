@@ -1381,6 +1381,7 @@ for mrl_record in mrl_records:
     df2_row += 1
 
 # add to qc tab
+print("creating QC tab")
 qcrow += 1
 qctab.write(qcrow, 2, "Count")
 qctab.write(qcrow, 3, "Brand Count")
@@ -1411,6 +1412,7 @@ for pharm_file in pharm_files:
 # ic(report_identifiers)
 qcrow += 1
 for report_identifier in report_identifiers:
+    print(f"working on {report_identifier['report_identifier']}")
     qcrow += 1
     qctab.write(qcrow, 0, report_identifier["report_identifier"])
     qcrow += 1
@@ -1446,42 +1448,59 @@ for report_identifier in report_identifiers:
         qctab.write(qcrow, 3, replenishment["report_identifier"])
         qctab.write(qcrow, 4, "rep upload "+replenishment["date(timestamp)"].strftime("%Y-%m-%d"))
         qcrow += 1
+    
+    
     accum_date = None
     # get the max accumulator date for this report
     accum_date_query = """SELECT MAX(accumulator_date) as max_date FROM accumulator
         WHERE report_identifier = %s;"""
-    accum_date_inputs = (report["report_identifier"],)
+    accum_date_inputs = (report_identifier["report_identifier"],)
     cursor.execute(accum_date_query, accum_date_inputs)
     accum_date_result = cursor.fetchone()
     # get the current accumulator filename
     accum_filename_query = """SELECT input_file FROM accumulator WHERE report_identifier = %s AND accumulator_date = %s LIMIT 1;"""
-    accum_filename_inputs = (report["report_identifier"], accum_date_result["max_date"])
+    accum_filename_inputs = (report_identifier["report_identifier"], accum_date_result["max_date"])
     cursor.execute(accum_filename_query, accum_filename_inputs)
     accum_filename_result = cursor.fetchone()
+    ic(report_identifier["report_identifier"])
+    ic(accum_date_result)
+    ic(accum_filename_result)
 
     # get the prev accumulator date
     prev_accum_date_query = """SELECT MAX(accumulator_date) as max_date FROM accumulator
         WHERE report_identifier = %s
         AND accumulator_date < %s;"""
-    prev_accum_date_inputs = (report["report_identifier"], accum_date_result["max_date"])
+    prev_accum_date_inputs = (report_identifier["report_identifier"], accum_date_result["max_date"])
     cursor.execute(prev_accum_date_query, prev_accum_date_inputs)
     prev_accum_date_result = cursor.fetchone()
     ic(prev_accum_date_result)
     # get the prev accumulator filename
     prev_accum_filename_query = """SELECT input_file FROM accumulator WHERE report_identifier = %s AND accumulator_date = %s LIMIT 1;"""
-    prev_accum_filename_inputs = (report["report_identifier"], prev_accum_date_result["max_date"])
+    prev_accum_filename_inputs = (report_identifier["report_identifier"], prev_accum_date_result["max_date"])
     cursor.execute(prev_accum_filename_query, prev_accum_filename_inputs)
     prev_accum_filename_result = cursor.fetchone()
 
-    qctab.write(qcrow, 0, "accumulator input file")
-    qctab.write(qcrow, 1, accum_filename_result["input_file"])
-    qctab.write(qcrow, 2, accum_date_result["max_date"].strftime("%Y-%m-%d"))
-    qcrow += 1
-    qctab.write(qcrow, 0, "prev accumulator input file")
-    qctab.write(qcrow, 1, prev_accum_filename_result["input_file"])
-    qctab.write(qcrow, 2, prev_accum_date_result["max_date"].strftime("%Y-%m-%d"))
-    qcrow += 1
-qcrow += 1
+    try:
+        qctab.write(qcrow, 0, "accumulator input file")
+        qctab.write(qcrow, 1, accum_filename_result["input_file"])
+        qctab.write(qcrow, 2, accum_date_result["max_date"].strftime("%Y-%m-%d"))
+        qcrow += 1
+    except:
+        print("no recent accumulator file found")
+        qctab.write(qcrow, 0, "no recent accumulator file found")
+        qcrow += 1
+        pass
+    try:
+        qctab.write(qcrow, 0, "prev accumulator input file")
+        qctab.write(qcrow, 1, prev_accum_filename_result["input_file"])
+        qctab.write(qcrow, 2, prev_accum_date_result["max_date"].strftime("%Y-%m-%d"))
+        qcrow += 1
+    except:
+        print("no prev accumulator file found")
+        qctab.write(qcrow, 0, "no prev accumulator file found")
+        qcrow += 1
+        pass
+qcrow += 2
 for report_identifier in report_identifiers:
     qctab.write(qcrow, 0, "report_identifier")
     qctab.write(qcrow, 1, report_identifier["report_identifier"])
