@@ -1075,8 +1075,6 @@ for report in report_identifiers:
         dispensed_packages = 0
         dispensed_packages = float(dispensed_result["qty_replenished"])/float(drug_info["bupp"]) if drug_info["bupp"] else 0
 
-
-
         # get replenished packages
         replenished_query = """SELECT IFNULL(SUM(num_pkgs), 0) as pkgs_replenished FROM replenishments
             WHERE ndc11 = %s
@@ -1114,23 +1112,23 @@ for report in report_identifiers:
         invs_col += 1
         inventab.write(inv_row, invs_col, package_price, money)
         invs_col += 1
-        inventab.write(inv_row, invs_col, dispensed_packages)
+        inventab.write(inv_row, invs_col, round(dispensed_packages, 2))
         invs_col += 1
         disp_value = float(dispensed_packages) * float(package_price) if package_price else 0
         inventab.write(inv_row, invs_col, disp_value, money)
         invs_col += 1
-        inventab.write(inv_row, invs_col, replenished_result["pkgs_replenished"])
+        inventab.write(inv_row, invs_col, round(replenished_result["pkgs_replenished"], 2))
         invs_col += 1
-        replenished_value = float(dispensed_packages) * float(package_price) if package_price else 0
+        replenished_value = float(replenished_result["pkgs_replenished"]) * float(package_price) if package_price else 0
         inventab.write(inv_row, invs_col, replenished_value, money)
         invs_col += 1
         variance_pkgs = float(dispensed_packages) -float(replenished_result["pkgs_replenished"])
-        inventab.write(inv_row, invs_col, variance_pkgs)
+        inventab.write(inv_row, invs_col, round(variance_pkgs, 2))
         invs_col += 1
         variance_value = disp_value - replenished_value
-        inventab.write(inv_row, invs_col, variance_value, money)
+        inventab.write(inv_row, invs_col, round(variance_value, 2), money)
         invs_col += 1
-        inventab.write(inv_row, invs_col, accumulator_result["pkgs_dispensed"])
+        inventab.write(inv_row, invs_col, round(accumulator_result["pkgs_dispensed"], 2))
         invs_col += 1
 
         inv_row += 1
