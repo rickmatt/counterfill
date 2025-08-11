@@ -1064,13 +1064,18 @@ for report in report_identifiers:
             manufacturer = manuf_info["manufacturer"]
 
         # get dispensed packages
-        dispensed_query = """SELECT IFNULL(SUM(pkgs_disp), 0) as pkgs_dispensed FROM 340b_claims
+        # this needs to come from qty_replenished/bupp
+        dispensed_query = """SELECT IFNULL(SUM(qty_replenished), 0) as qty_replenished FROM 340b_claims
             WHERE ndc = %s
             AND fill_date BETWEEN %s AND %s
             AND report_identifier = %s;"""
         dispensed_inputs = (inv_ndc["ndc"], report_start_date, report_end_date, report_info["report_identifier"])
         cursor.execute(dispensed_query, dispensed_inputs)
         dispensed_result = cursor.fetchone()
+        dispensed_packages = 0
+        dispensed_packages = float(dispensed_result["qty_replenished"])/float(drug_info["bupp"]) if drug_info["bupp"] else 0
+
+
 
         # get replenished packages
         replenished_query = """SELECT IFNULL(SUM(num_pkgs), 0) as pkgs_dispensed FROM replenishments
@@ -1109,9 +1114,9 @@ for report in report_identifiers:
         invs_col += 1
         inventab.write(inv_row, invs_col, package_price, money)
         invs_col += 1
-        inventab.write(inv_row, invs_col, dispensed_result["pkgs_dispensed"])
+        inventab.write(inv_row, invs_col, dispensed_packages)
         invs_col += 1
-        disp_value = float(dispensed_result["pkgs_dispensed"]) * float(package_price) if package_price else 0
+        disp_value = float(dispensed_packages) * float(package_price) if package_price else 0
         inventab.write(inv_row, invs_col, disp_value, money)
         invs_col += 1
         inventab.write(inv_row, invs_col, replenished_result["pkgs_dispensed"])
