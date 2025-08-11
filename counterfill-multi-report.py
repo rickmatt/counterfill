@@ -399,7 +399,7 @@ for doctor in doctors:
     qpdoc_query = """SELECT covered_entity, report_identifier, count(*) 
         FROM 340b_claims 
         WHERE prescriber_npi = %s 
-        AND fill_date between %s AND %s
+        AND bill_date between %s AND %s
         AND report_identifier IN (SELECT report_identifier FROM counterfill_meta WHERE counterfill_name = %s)
         GROUP BY covered_entity, report_identifier
         ORDER BY count(*) DESC;"""
@@ -407,9 +407,9 @@ for doctor in doctors:
     qpdoc = cursor.fetchall()
 
     ce_count_query = """SELECT DISTINCT(report_identifier) FROM 340b_claims 
-        WHERE prescriber_npi = %s 
-        AND fill_date between %s AND %s
-        AND report_identifier IN (SELECT report_identifier FROM counterfill_meta WHERE counterfill_name = %s);"""
+            WHERE prescriber_npi = %s 
+            AND fill_date between %s AND %s
+            AND report_identifier IN (SELECT report_identifier FROM counterfill_meta WHERE counterfill_name = %s);"""
     ce_count_inputs = (doctor, report_start_date, report_end_date, pharmacy_name)
     cursor.execute(ce_count_query, ce_count_inputs)
     ce_count = cursor.fetchall()
@@ -949,7 +949,9 @@ for report in report_identifiers:
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["bupp"])
         col += 1
-        tpa_qc_tab.write(tpa_row, col, claim["pkgs_disp"])
+        pkgs_replenished = 0
+        pkgs_replenished = float(claim["qty_replenished"]) / float(claim["bupp"])
+        tpa_qc_tab.write(tpa_row, col, round(pkgs_replenished, 2))
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["prescriber_npi"])
         col += 1
@@ -1065,10 +1067,16 @@ for report in report_identifiers:
 
         # get dispensed packages
         # this needs to come from qty_replenished/bupp
-        dispensed_query = """SELECT IFNULL(SUM(qty_replenished), 0) as qty_replenished FROM 340b_claims
-            WHERE ndc = %s
-            AND fill_date BETWEEN %s AND %s
-            AND report_identifier = %s;"""
+        if payment_model == "POR" or data_source == "Invoices":
+            dispensed_query = """SELECT IFNULL(SUM(qty_replenished), 0) as qty_replenished FROM 340b_claims
+                WHERE ndc = %s
+                AND bill_date BETWEEN %s AND %s
+                AND report_identifier = %s;"""
+        else:
+            dispensed_query = """SELECT IFNULL(SUM(qty_dispensed), 0) as qty_dispensed FROM counterfill_claims
+                WHERE ndc = %s
+                AND fill_date BETWEEN %s AND %s
+                AND report_identifier = %s;"""
         dispensed_inputs = (inv_ndc["ndc"], report_start_date, report_end_date, report_info["report_identifier"])
         cursor.execute(dispensed_query, dispensed_inputs)
         dispensed_result = cursor.fetchone()
@@ -1420,11 +1428,26 @@ for report_identifier in report_identifiers:
     qctab.write(qcrow, 0, report_identifier["report_identifier"])
     qcrow += 1
     # ic(report_identifier)
-    tpa_query = """SELECT tpa, input_file, report_identifier, date(timestamp), count(*) FROM 340b_claims
-            WHERE report_identifier = %s
-            AND fill_date BETWEEN %s AND %s
-            GROUP BY tpa, input_file, report_identifier, date(timestamp)
-            ORDER BY date(timestamp) ASC;"""
+    # get report_info
+    report_info_sql = """SELECT payment_model, data_source FROM report_queue
+        WHERE report_identifier = %s LIMIT 1;"""
+    report_info_inputs = (report_identifier["report_identifier"],)
+    cursor.execute(report_info_sql, report_info_inputs)
+    report_info = cursor.fetchone()
+    payment_model = report_info["payment_model"]
+    data_source = report_info["data_source"]
+    if payment_model == "POR" or data_source == "Invoices":
+        tpa_query = """SELECT tpa, input_file, report_identifier, date(timestamp), count(*) FROM 340b_claims
+                WHERE report_identifier = %s
+                AND bill_date BETWEEN %s AND %s
+                GROUP BY tpa, input_file, report_identifier, date(timestamp)
+                ORDER BY date(timestamp) ASC;"""
+    else:
+        tpa_query = """SELECT tpa, input_file, report_identifier, date(timestamp), count(*) FROM counterfill_claims
+                WHERE report_identifier = %s
+                AND fill_date BETWEEN %s AND %s
+                GROUP BY tpa, input_file, report_identifier, date(timestamp)
+                ORDER BY date(timestamp) ASC;"""
     tpa_inputs = (report_identifier['report_identifier'], report_start_date, report_end_date)
     cursor.execute(tpa_query, tpa_inputs)
     tpa_claims = cursor.fetchall()
