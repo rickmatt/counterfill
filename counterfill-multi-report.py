@@ -1078,7 +1078,7 @@ for report in report_identifiers:
 
 
         # get replenished packages
-        replenished_query = """SELECT IFNULL(SUM(num_pkgs), 0) as pkgs_dispensed FROM replenishments
+        replenished_query = """SELECT IFNULL(SUM(num_pkgs), 0) as pkgs_replenished FROM replenishments
             WHERE ndc11 = %s
             AND replenishment_date BETWEEN %s AND %s
             AND report_identifier = %s;"""
@@ -1119,12 +1119,12 @@ for report in report_identifiers:
         disp_value = float(dispensed_packages) * float(package_price) if package_price else 0
         inventab.write(inv_row, invs_col, disp_value, money)
         invs_col += 1
-        inventab.write(inv_row, invs_col, replenished_result["pkgs_dispensed"])
+        inventab.write(inv_row, invs_col, replenished_result["pkgs_replenished"])
         invs_col += 1
-        replenished_value = float(replenished_result["pkgs_dispensed"]) * float(package_price) if package_price else 0
+        replenished_value = float(dispensed_packages) * float(package_price) if package_price else 0
         inventab.write(inv_row, invs_col, replenished_value, money)
         invs_col += 1
-        variance_pkgs = float(dispensed_result["pkgs_dispensed"]) -float(replenished_result["pkgs_dispensed"])
+        variance_pkgs = float(dispensed_packages) -float(replenished_result["pkgs_replenished"])
         inventab.write(inv_row, invs_col, variance_pkgs)
         invs_col += 1
         variance_value = disp_value - replenished_value
