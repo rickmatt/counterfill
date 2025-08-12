@@ -15,9 +15,9 @@ import numpy
 
 starttime = datetime.datetime.now()
 # report_period looks like "2025-03"
-report_period = "2025-06"
+report_period = "2025-07"
 # report_label looks like "2025-3"
-report_label = "2025-6"
+report_label = "2025-7"
 report_year = int(report_period.split("-")[0])
 report_month = int(report_period.split("-")[1])
 this_month = report_month
@@ -977,7 +977,10 @@ for report in report_identifiers:
         tpa_qc_tab.write(tpa_row, col, claim["tpa"])
         col += 1
         # (num_pkgs * pkg_cost) - transaction_payment
-        cash_impact = (float(claim["pkgs_disp"]) * float(claim["pkg_cost"])) - float(claim["transaction_payment"])
+        if claim["uninsured"] == "YES":
+            cash_impact = (float(claim["pkgs_disp"]) * float(claim["pkg_cost"])) - float(claim["transaction_payment"])
+        else:
+            cash_impact = 0
         tpa_qc_tab.write(tpa_row, col, round(cash_impact, 2), money)
         col += 1
         tpa_qc_tab.write(tpa_row, col, rq_results["ce_state"])  # Placeholder for state
