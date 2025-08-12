@@ -15,9 +15,9 @@ import numpy
 
 starttime = datetime.datetime.now()
 # report_period looks like "2025-03"
-report_period = "2025-07"
+report_period = "2025-06"
 # report_label looks like "2025-3"
-report_label = "2025-7"
+report_label = "2025-6"
 report_year = int(report_period.split("-")[0])
 report_month = int(report_period.split("-")[1])
 this_month = report_month
@@ -1042,6 +1042,17 @@ for report in report_identifiers:
     )
     cursor.execute(invs_query, invs_input)
     invs_ndcs = cursor.fetchall()
+
+    accum_date = None
+    # get the max accumulator date for this report
+    accum_date_query = """SELECT MAX(accumulator_date) as max_date FROM accumulator
+        WHERE report_identifier = %s;"""
+    accum_date_inputs = (report["report_identifier"],)
+    cursor.execute(accum_date_query, accum_date_inputs)
+    accum_date_result = cursor.fetchone()
+    if accum_date_result:
+        accum_date = accum_date_result["max_date"]
+
     for inv_ndc in invs_ndcs:
         # get drug info from drug_catalog
         drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
@@ -1081,6 +1092,8 @@ for report in report_identifiers:
         cursor.execute(dispensed_query, dispensed_inputs)
         dispensed_result = cursor.fetchone()
         dispensed_packages = 0
+        ic(drug_info)
+        ic(dispensed_inputs)
         dispensed_packages = float(dispensed_result["qty_replenished"])/float(drug_info["bupp"]) if drug_info["bupp"] else 0
 
         # get replenished packages
@@ -1095,9 +1108,9 @@ for report in report_identifiers:
         # get accumulator packages
         accumulator_query = """SELECT IFNULL(SUM(num_pkgs), 0) as pkgs_dispensed FROM accumulator
             WHERE ndc11 = %s
-            AND accumulator_date BETWEEN %s AND %s
+            AND accumulator_date = %s
             AND report_identifier = %s;"""
-        accumulator_inputs = (inv_ndc["ndc"], report_start_date, report_end_date, report_info["report_identifier"])
+        accumulator_inputs = (inv_ndc["ndc"], accum_date, report_info["report_identifier"])
         cursor.execute(accumulator_query, accumulator_inputs)
         accumulator_result = cursor.fetchone()
 
