@@ -64,6 +64,74 @@ def get_indicator(ndc11):
         gi_indicator = ""
     return(gi_indicator)
 
+def get_covered_entity_name(report_identifier):
+    """Get standard covered entity name from counterfill_meta table"""
+    ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
+    ce_inputs = (report_identifier,)
+    cursor.execute(ce_query, ce_inputs)
+    ce_results = cursor.fetchone()
+    return ce_results["covered_entity"] if ce_results else "Unknown"
+
+def get_drug_and_manufacturer_info(ndc):
+    """Get drug and manufacturer information for an NDC"""
+    # get drug info from drug_catalog
+    drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
+    cursor.execute(drug_query, (ndc,))
+    drug_info = cursor.fetchone()
+    
+    if drug_info is None:
+        description = ""
+        indicator = ""
+        package_price = None
+        bupp = None
+    else:
+        description = drug_info["description"]
+        indicator = drug_info["indicator"] or ""
+        package_price = drug_info.get("price")
+        bupp = drug_info.get("bupp")
+    
+    # get manufacturer info from manuf_exclusions
+    manuf_query = """SELECT * FROM manuf_exclusions WHERE ndc11 = %s LIMIT 1;"""
+    cursor.execute(manuf_query, (ndc,))
+    manuf_info = cursor.fetchone()
+    manufacturer = manuf_info["manufacturer"] if manuf_info else "Not restricted manufacturer"
+    
+    return {
+        'description': description,
+        'indicator': indicator,
+        'manufacturer': manufacturer,
+        'package_price': package_price,
+        'bupp': bupp
+    }
+
+def create_worksheet_with_headers(workbook, name, headers, column_widths=None, tab_color="81A3A7", freeze_panes=True, title_format=None):
+    """Create a worksheet with standard formatting and headers"""
+    tab = workbook.add_worksheet(name)
+    tab.set_tab_color(tab_color)
+    
+    if column_widths:
+        if isinstance(column_widths, (int, float)):
+            # Single width for all columns
+            tab.set_column(0, len(headers)-1, column_widths)
+        elif len(column_widths) == 2 and isinstance(column_widths[0], int) and isinstance(column_widths[1], int):
+            # Range format: (start_col, end_col, width)
+            tab.set_column(column_widths[0], column_widths[1], 15)
+        else:
+            # Individual widths per column
+            for i, width in enumerate(column_widths):
+                if width is not None:
+                    tab.set_column(i, i, width)
+    
+    if freeze_panes:
+        tab.freeze_panes(1, 0)
+    
+    # Write headers
+    row = 0
+    for idx, header in enumerate(headers):
+        tab.write(row, idx, header, title_format)
+    
+    return tab, 1  # Return tab and next row number
+
 # establishing the connection
 conn = mysql.connector.connect(
     user="root", password="root1234", host="127.0.0.1", database="dev_secure340b"
@@ -246,11 +314,7 @@ for claim in pdd_claims:
         # print("340b claim")
         # ic(is340b_results)
         # get standard ce name from counterfill_meta
-        ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
-        ce_inputs = (is340b_results["report_identifier"],)
-        cursor.execute(ce_query, ce_inputs)
-        ce_results = cursor.fetchone()
-        covered_entity = ce_results["covered_entity"] if ce_results else "Unknown"
+        covered_entity = get_covered_entity_name(is340b_results["report_identifier"])
         tpa = is340b_results["tpa"]
         disp_fee = is340b_results["disp_fee"]
         status = "340B"
@@ -340,15 +404,10 @@ pdd_duration = pdd_endtime - pdd_query_endtime
 ic(pdd_duration)
 
 # create Qualified Prescribers tab
-qptab = workbook.add_worksheet("Qualified Prescribers")
-qptab.set_tab_color("81A3A7")
-qptab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-qptab.set_column(0, 6, 25)
-qprow = 2
 qpheaders = ["Prescriber Number", "Prescriber Name", "340B Match?", "Percent Qualified", "Prescriber CE", "Doctor Found at Multiple CEs?", "Possible CEs"]
-for idx, header in enumerate(qpheaders):
-    qptab.write(qprow, idx, header, title_format)
-qprow += 1
+qptab, qprow = create_worksheet_with_headers(workbook, "Qualified Prescribers", qpheaders, column_widths=25, title_format=title_format)
+qptab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
+qprow = 2  # Reset to account for the return link
 
 doctors = []
 for report in report_identifiers:
@@ -426,11 +485,8 @@ for doctor in doctors:
     qptab.write(qprow, qpcol, qp_pct, pct_format2)
     qpcol += 1
     # get standard ce name from counterfill_meta
-    ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
-    ce_inputs = (qpdoc[0]["report_identifier"],)
-    cursor.execute(ce_query, ce_inputs)
-    ce_results = cursor.fetchone()
-    qptab.write(qprow, qpcol, ce_results["covered_entity"])
+    covered_entity = get_covered_entity_name(qpdoc[0]["report_identifier"])
+    qptab.write(qprow, qpcol, covered_entity)
     qpcol += 1
     if len(ce_count) == 1:
         qptab.write(qprow, qpcol, "NO")
@@ -442,13 +498,10 @@ for doctor in doctors:
     ces_count = 0
     for ce1 in ce_count:
         # get standard ce name from counterfill_meta
-        ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
-        ce_inputs = (ce1["report_identifier"],)
-        cursor.execute(ce_query, ce_inputs)
-        ce_results = cursor.fetchone()
+        covered_entity = get_covered_entity_name(ce1["report_identifier"])
         if ces_count >= 1:
             ces += "; "
-        ces += ce_results["covered_entity"]
+        ces += covered_entity
         ces_count += 1
     print(ces)
     qpcol += 1
@@ -461,15 +514,10 @@ ic(qual_npi_list)
 ic(qual_doctor_list)
 
 # create Qualified Manufacturers tab
-qmtab = workbook.add_worksheet("Qualified Manufacturers")
-qmtab.set_tab_color("81A3A7")
-qmtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-qmtab.set_column(0, 5, 25)
-qmrow = 2
 qmheaders = ["Manufacturer", "Times Qualified", "Replenished 340B", "CP-CE"]
-for idx, header in enumerate(qmheaders):
-    qmtab.write(qmrow, idx, header, title_format)
-qmrow += 1
+qmtab, qmrow = create_worksheet_with_headers(workbook, "Qualified Manufacturers", qmheaders, column_widths=25, title_format=title_format)
+qmtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
+qmrow = 2  # Reset to account for the return link
 
 for report in report_identifiers:
     qm_query = """SELECT a.manufacturer, count(*) FROM manuf_exclusions as a
@@ -481,10 +529,7 @@ for report in report_identifiers:
     qm_inputs = (report["report_identifier"], report_start_date, report_end_date)
     cursor.execute(qm_query, qm_inputs)
     qms = cursor.fetchall()
-    ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s;"""
-    ce_inputs = (report["report_identifier"],)
-    cursor.execute(ce_query, ce_inputs)
-    report["covered_entity"] = cursor.fetchone()["covered_entity"]
+    report["covered_entity"] = get_covered_entity_name(report["report_identifier"])
     ic(report)
     ic(qms)
     for qm in qms:
@@ -519,22 +564,6 @@ ic(manuf_concat)
 # clean up counterfill_audit_rxs table if this report is being rerun
 cursor.execute("DELETE FROM counterfill_audit_rxs WHERE pharmacy = %s AND report_period = %s;", (pharmacy_name, report_period))
 print("creating TPA RX Review tab")
-tpa_audit_tab = workbook.add_worksheet("TPA Rx Review")
-tpa_audit_tab.set_tab_color("81A3A7")
-tpa_audit_tab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-
-# get historical list of audit tab entries
-tpa_query = """SELECT * FROM counterfill_audit_rxs WHERE pharmacy = %s AND report_period < %s;"""
-tpa_inputs = (pharmacy_name, report_period)
-cursor.execute(tpa_query, tpa_inputs)
-tpa_audit_history = cursor.fetchall()
-tpa_audit_history_list = []
-for tpa_audit_item in tpa_audit_history:
-    tpa_audit_history_list.append(tpa_audit_item["rx_fill_num"])
-ic(tpa_audit_history_list)
-ic(len(tpa_audit_history))
-
-tpa_row = 2
 tpa_headers = [
     "Rx Number",
     "Fill Number",
@@ -551,10 +580,20 @@ tpa_headers = [
     "Potential Covered Entity",
     "Prescriber NPI"
 ]
-tpa_audit_tab.set_column(0, len(tpa_headers)-1, 20)
-for idx, header in enumerate(tpa_headers):
-    tpa_audit_tab.write(tpa_row, idx, header, title_format)
-tpa_row += 1
+tpa_audit_tab, tpa_row = create_worksheet_with_headers(workbook, "TPA Rx Review", tpa_headers, column_widths=20, title_format=title_format)
+tpa_audit_tab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
+tpa_row = 2  # Reset to account for the return link
+
+# get historical list of audit tab entries
+tpa_query = """SELECT * FROM counterfill_audit_rxs WHERE pharmacy = %s AND report_period < %s;"""
+tpa_inputs = (pharmacy_name, report_period)
+cursor.execute(tpa_query, tpa_inputs)
+tpa_audit_history = cursor.fetchall()
+tpa_audit_history_list = []
+for tpa_audit_item in tpa_audit_history:
+    tpa_audit_history_list.append(tpa_audit_item["rx_fill_num"])
+ic(tpa_audit_history_list)
+ic(len(tpa_audit_history))
 # ninetydaysago = datetime.datetime.now() - datetime.timedelta(days=90)
 # ninetydaysago = ninetydaysago.strftime("%Y-%m-%d")
 
@@ -651,12 +690,7 @@ for doctor in qual_npi_list:
         if ever_results:
             tpa_audit_tab.write(tpa_row, col, ever_results["fill_date"], date_format)
             # get standard ce name from counterfill_meta
-            ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
-            ce_inputs = (ever_results["report_identifier"],)
-            cursor.execute(ce_query, ce_inputs)
-            ce_results = cursor.fetchone()
-            if ce_results:
-                ce = ce_results["covered_entity"]
+            ce = get_covered_entity_name(ever_results["report_identifier"])
         else:
             tpa_audit_tab.write(tpa_row, col, "NO")
             ce = ""
@@ -685,10 +719,6 @@ tpa_audit_tab.autofilter(2, 0, tpa_row, len(tpa_headers)-1)
 
 # create TPA Rx Review - ROI tab
 print("creating TPA Rx Review - ROI tab")
-roitab = workbook.add_worksheet("TPA Rx Review - ROI Tab")
-roitab.set_tab_color("81A3A7")
-roitab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-roirow = 2
 roi_headers = ["Rx Number",
                "Fill Number",
                "Fill Date",
@@ -703,10 +733,9 @@ roi_headers = ["Rx Number",
                "Qualifying Prescriber Name",
                "Qualifying Manufacturer",
                "Potential Covered Entity"]
-roitab.set_column(0, len(roi_headers)-1, 20)
-for idx, header in enumerate(roi_headers):
-    roitab.write(roirow, idx, header, title_format)
-roirow += 1
+roitab, roirow = create_worksheet_with_headers(workbook, "TPA Rx Review - ROI Tab", roi_headers, column_widths=20, title_format=title_format)
+roitab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
+roirow = 2  # Reset to account for the return link
 # get the list of roi candidates
 roi_query = """SELECT * FROM counterfill_audit_rxs WHERE pharmacy = %s ORDER BY rx_fill_num ASC;"""
 roi_inputs = (pharmacy_name,)
@@ -769,18 +798,14 @@ roitab.autofilter(2, 0, roirow, len(roi_headers)-1)
 
 # create Medicaid plan tab
 print()
-medicaidtab = workbook.add_worksheet("Medicaid Plan Info")
-medicaidtab.set_tab_color("81A3A7")
-medicaidtab.set_column(0, 12, 20)
-medicaidtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
 medicaidheaders = ["Plan Name", "BIN", "PCN", "Group","Concat","State"]
+medicaidtab, medicaidrow = create_worksheet_with_headers(workbook, "Medicaid Plan Info", medicaidheaders, column_widths=20, title_format=title_format)
+medicaidtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
+medicaidrow = 1  # Reset for data rows
 msql = """SELECT * FROM counterfill_medicaid WHERE state = %s;"""
 mrecord = (pharmacy_state,)
 cursor.execute(msql, mrecord)
 medicaids = cursor.fetchall()
-medicaidrow = 1
-for idx, header in enumerate(medicaidheaders):
-    medicaidtab.write(0, idx, header, title_format)
 for medicaid in medicaids:
     medicaidcol = 0
     medicaidtab.write(medicaidrow, medicaidcol, medicaid["plan_name"])
@@ -1057,27 +1082,12 @@ for report in report_identifiers:
         accum_date = accum_date_result["max_date"]
 
     for inv_ndc in invs_ndcs:
-        # get drug info from drug_catalog
-        drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
-        cursor.execute(drug_query, (inv_ndc["ndc"],))
-        drug_info = cursor.fetchone()
-        if drug_info is None:
-            description = ""
-            indicator = ""
-            package_price = None
-        else:
-            description = drug_info["description"]
-            indicator = drug_info["indicator"]
-            package_price = drug_info["price"]
-
-        # get manufacturer info from manuf_exclusions
-        manuf_query = """SELECT * FROM manuf_exclusions WHERE ndc11 = %s LIMIT 1;"""
-        cursor.execute(manuf_query, (inv_ndc["ndc"],))
-        manuf_info = cursor.fetchone()
-        if manuf_info is None:
-            manufacturer = "Not restricted manufacturer"
-        else:
-            manufacturer = manuf_info["manufacturer"]
+        # get drug and manufacturer info
+        drug_data = get_drug_and_manufacturer_info(inv_ndc["ndc"])
+        description = drug_data['description']
+        indicator = drug_data['indicator']
+        package_price = drug_data['package_price']
+        manufacturer = drug_data['manufacturer']
 
         # get dispensed packages
         # this needs to come from qty_replenished/bupp
@@ -1095,9 +1105,9 @@ for report in report_identifiers:
         cursor.execute(dispensed_query, dispensed_inputs)
         dispensed_result = cursor.fetchone()
         dispensed_packages = 0
-        ic(drug_info)
+        ic(drug_data)
         ic(dispensed_inputs)
-        dispensed_packages = float(dispensed_result["qty_replenished"])/float(drug_info["bupp"]) if drug_info["bupp"] else 0
+        dispensed_packages = float(dispensed_result["qty_replenished"])/float(drug_data["bupp"]) if drug_data["bupp"] else 0
 
         # get replenished packages
         replenished_query = """SELECT IFNULL(SUM(num_pkgs), 0) as pkgs_replenished FROM replenishments
@@ -1118,13 +1128,10 @@ for report in report_identifiers:
         accumulator_result = cursor.fetchone()
 
         # get standard ce name from counterfill_meta
-        ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
-        ce_inputs = (report["report_identifier"],)
-        cursor.execute(ce_query, ce_inputs)
-        ce_results = cursor.fetchone()
+        covered_entity = get_covered_entity_name(report["report_identifier"])
 
         invs_col = 0
-        inventab.write(inv_row, invs_col, ce_results["covered_entity"])
+        inventab.write(inv_row, invs_col, covered_entity)
         invs_col += 1
         inventab.write(inv_row, invs_col, inv_ndc["ndc"])
         invs_col += 1
@@ -1210,30 +1217,13 @@ for report in report_identifiers:
     accumulators = cursor.fetchall()
 
     # get standard ce name from counterfill_meta
-    ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
-    ce_inputs = (report["report_identifier"],)
-    cursor.execute(ce_query, ce_inputs)
-    ce_results = cursor.fetchone()
+    covered_entity = get_covered_entity_name(report["report_identifier"])
 
     for accumulator in accumulators:
-        # get drug_catalog info
-        drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
-        cursor.execute(drug_query, (accumulator["ndc11"],))
-        drug_info = cursor.fetchone()
-        if drug_info is None:
-            indicator = ""
-        else:
-            indicator = drug_info["indicator"]
-            if indicator is None:
-                indicator = ""
-        # get manuf_exclusions info
-        manuf_query = """SELECT * FROM manuf_exclusions WHERE ndc11 = %s LIMIT 1;"""
-        cursor.execute(manuf_query, (accumulator["ndc11"],))
-        manuf_info = cursor.fetchone()
-        if manuf_info is None:
-            accumulator["manufacturer"] = "Not restricted manufacturer"
-        else:
-            accumulator["manufacturer"] = manuf_info["manufacturer"]
+        # get drug and manufacturer info
+        drug_data = get_drug_and_manufacturer_info(accumulator["ndc11"])
+        indicator = drug_data['indicator']
+        accumulator["manufacturer"] = drug_data['manufacturer']
         # get the last replenishment date for this NDC
         last_replenishment_query = """SELECT MAX(replenishment_date) as last_date FROM replenishments
             WHERE ndc11 = %s
@@ -1246,7 +1236,7 @@ for report in report_identifiers:
         else:
             accumulator["last_replenishment_date"] = "not recently replenished"
         col = 0
-        accumtab.write(accum_row, col, ce_results["covered_entity"])
+        accumtab.write(accum_row, col, covered_entity)
         col += 1
         accumtab.write(accum_row, col, accumulator["ndc11"])
         col += 1
@@ -1315,35 +1305,18 @@ for report in report_identifiers:
     purchases = cursor.fetchall()
 
     # get standard ce name from counterfill_meta
-    ce_query = """SELECT covered_entity FROM counterfill_meta WHERE report_identifier = %s LIMIT 1;"""
-    ce_inputs = (report["report_identifier"],)
-    cursor.execute(ce_query, ce_inputs)
-    ce_results = cursor.fetchone()
+    covered_entity = get_covered_entity_name(report["report_identifier"])
 
     for purchase in purchases:
         if purchase["status"] == "810 Received – Order Not Found":
             print(f"Skipping {purchase['ndc11']} - status is '810 Received - Order Not Found'")
             continue
-        # get drug_catalog info
-        drug_query = """SELECT * FROM drug_catalog WHERE ndc11 = %s LIMIT 1;"""
-        cursor.execute(drug_query, (purchase["ndc11"],))
-        drug_info = cursor.fetchone()
-        if drug_info is None:
-            purchase["indicator"] = ""
-        else:
-            purchase["indicator"] = drug_info["indicator"]
-            if purchase["indicator"] is None:
-                purchase["indicator"] = ""
-        # get manuf_exclusions info
-        manuf_query = """SELECT * FROM manuf_exclusions WHERE ndc11 = %s LIMIT 1;"""
-        cursor.execute(manuf_query, (purchase["ndc11"],))
-        manuf_info = cursor.fetchone()
-        if manuf_info is None:
-            purchase["manufacturer"] = "Not restricted manufacturer"
-        else:
-            purchase["manufacturer"] = manuf_info["manufacturer"]
+        # get drug and manufacturer info
+        drug_data = get_drug_and_manufacturer_info(purchase["ndc11"])
+        purchase["indicator"] = drug_data['indicator']
+        purchase["manufacturer"] = drug_data['manufacturer']
         col = 0
-        purchtab.write(purch_row, col, ce_results["covered_entity"])
+        purchtab.write(purch_row, col, covered_entity)
         col += 1
         purchtab.write(purch_row, col, purchase["ndc11"])
         col += 1
