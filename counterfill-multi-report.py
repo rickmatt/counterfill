@@ -464,6 +464,9 @@ for doctor in doctors:
         ORDER BY count(*) DESC;"""
     cursor.execute(qpdoc_query, (doctor, report_start_date, report_end_date, pharmacy_name))
     qpdoc = cursor.fetchall()
+    ic(qpdoc)
+    if not qpdoc:
+        continue
 
     ce_count_query = """SELECT DISTINCT(report_identifier) FROM 340b_claims 
             WHERE prescriber_npi = %s 
