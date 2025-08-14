@@ -984,18 +984,7 @@ for report in report_identifiers:
         tpa_qc_tab.write(tpa_row, col, claim["prescriber_npi"])
         col += 1
         prescriber_name = ""
-        if claim["prescriber_name"] == "":
-            # get prescriber name from counterfill_claims
-            prescriber_query = """SELECT prescriber_name FROM counterfill_claims WHERE prescriber_npi = %s LIMIT 1;"""
-            prescriber_inputs = (claim["prescriber_npi"],)
-            cursor.execute(prescriber_query, prescriber_inputs)
-            prescriber_result = cursor.fetchone()
-            if prescriber_result is None:
-                prescriber_name = ""
-            else:
-                prescriber_name = prescriber_result["prescriber_name"]
-        else:
-            prescriber_name = claim["prescriber_name"]
+        prescriber_name = claim["prescriber_name"]
         tpa_qc_tab.write(tpa_row, col, prescriber_name)
         col += 1
         tpa_qc_tab.write(tpa_row, col, ce_results["covered_entity"])
