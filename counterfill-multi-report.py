@@ -15,9 +15,9 @@ import numpy
 
 starttime = datetime.datetime.now()
 # report_period looks like "2025-03"
-report_period = "2025-07"
+report_period = "2025-06"
 # report_label looks like "2025-3"
-report_label = "2025-7"
+report_label = "2025-6"
 report_year = int(report_period.split("-")[0])
 report_month = int(report_period.split("-")[1])
 this_month = report_month
@@ -406,8 +406,7 @@ ic(pdd_duration)
 # create Qualified Prescribers tab
 qpheaders = ["Prescriber Number", "Prescriber Name", "340B Match?", "Percent Qualified", "Prescriber CE", "Doctor Found at Multiple CEs?", "Possible CEs"]
 qptab, qprow = create_worksheet_with_headers(workbook, "Qualified Prescribers", qpheaders, column_widths=25, title_format=title_format)
-qptab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-qprow = 2  # Reset to account for the return link
+qprow = 1  # Reset to account for the return link
 
 doctors = []
 for report in report_identifiers:
@@ -519,8 +518,7 @@ ic(qual_doctor_list)
 # create Qualified Manufacturers tab
 qmheaders = ["Manufacturer", "Times Qualified", "Replenished 340B", "CP-CE"]
 qmtab, qmrow = create_worksheet_with_headers(workbook, "Qualified Manufacturers", qmheaders, column_widths=25, title_format=title_format)
-qmtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-qmrow = 2  # Reset to account for the return link
+qmrow = 1  # Reset to account for the return link
 
 for report in report_identifiers:
     qm_query = """SELECT a.manufacturer, count(*) FROM manuf_exclusions as a
@@ -565,7 +563,7 @@ ic(manuf_concat)
 # put the rest in the TPA Rx Review tab
 
 # clean up counterfill_audit_rxs table if this report is being rerun
-cursor.execute("DELETE FROM counterfill_audit_rxs WHERE pharmacy = %s AND report_period = %s;", (pharmacy_name, report_period))
+cursor.execute("DELETE FROM counterfill_audit_rxs WHERE pharmacy = %s AND report_period >= %s;", (pharmacy_name, report_period))
 print("creating TPA RX Review tab")
 tpa_headers = [
     "Rx Number",
@@ -584,8 +582,7 @@ tpa_headers = [
     "Prescriber NPI"
 ]
 tpa_audit_tab, tpa_row = create_worksheet_with_headers(workbook, "TPA Rx Review", tpa_headers, column_widths=20, title_format=title_format)
-tpa_audit_tab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-tpa_row = 2  # Reset to account for the return link
+tpa_row = 1  # Reset to account for the return link
 
 # get historical list of audit tab entries
 tpa_query = """SELECT * FROM counterfill_audit_rxs WHERE pharmacy = %s AND report_period < %s;"""
@@ -737,8 +734,7 @@ roi_headers = ["Rx Number",
                "Qualifying Manufacturer",
                "Potential Covered Entity"]
 roitab, roirow = create_worksheet_with_headers(workbook, "TPA Rx Review - ROI Tab", roi_headers, column_widths=20, title_format=title_format)
-roitab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
-roirow = 2  # Reset to account for the return link
+roirow = 1  # Reset to account for the return link
 # get the list of roi candidates
 roi_query = """SELECT * FROM counterfill_audit_rxs WHERE pharmacy = %s ORDER BY rx_fill_num ASC;"""
 roi_inputs = (pharmacy_name,)
@@ -803,7 +799,6 @@ roitab.autofilter(2, 0, roirow, len(roi_headers)-1)
 print()
 medicaidheaders = ["Plan Name", "BIN", "PCN", "Group","Concat","State"]
 medicaidtab, medicaidrow = create_worksheet_with_headers(workbook, "Medicaid Plan Info", medicaidheaders, column_widths=20, title_format=title_format)
-medicaidtab.write_url('A1',  "internal:'Summary'!A1", string="Return to Summary")
 medicaidrow = 1  # Reset for data rows
 msql = """SELECT * FROM counterfill_medicaid WHERE state = %s;"""
 mrecord = (pharmacy_state,)
@@ -1066,8 +1061,8 @@ for report in report_identifiers:
     accum_date = None
     # get the max accumulator date for this report
     accum_date_query = """SELECT MAX(accumulator_date) as max_date FROM accumulator
-        WHERE report_identifier = %s;"""
-    accum_date_inputs = (report["report_identifier"],)
+        WHERE report_identifier = %s and accumulator_date > %s;"""
+    accum_date_inputs = (report["report_identifier"], report_start_date)
     cursor.execute(accum_date_query, accum_date_inputs)
     accum_date_result = cursor.fetchone()
     if accum_date_result:
@@ -1187,16 +1182,17 @@ for report in report_identifiers:
     accum_date = None
     # get the max accumulator date for this report
     accum_date_query = """SELECT MAX(accumulator_date) as max_date FROM accumulator
-        WHERE report_identifier = %s;"""
-    accum_date_inputs = (report["report_identifier"],)
+        WHERE report_identifier = %s and accumulator_date > %s;"""
+    accum_date_inputs = (report["report_identifier"], report_start_date)
     cursor.execute(accum_date_query, accum_date_inputs)
     accum_date_result = cursor.fetchone()
 
     # get the prev accumulator date
     prev_accum_date_query = """SELECT MAX(accumulator_date) as max_date FROM accumulator
         WHERE report_identifier = %s
-        AND accumulator_date < %s;"""
-    prev_accum_date_inputs = (report["report_identifier"], accum_date_result["max_date"])
+        AND accumulator_date < %s
+        AND accumulator_date > %s;"""
+    prev_accum_date_inputs = (report["report_identifier"], accum_date_result["max_date"], report_start_date)
     cursor.execute(prev_accum_date_query, prev_accum_date_inputs)
     prev_accum_date_result = cursor.fetchone()
     ic(prev_accum_date_result)
