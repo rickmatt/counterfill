@@ -15,9 +15,9 @@ import numpy
 
 starttime = datetime.datetime.now()
 # report_period looks like "2025-03"
-report_period = "2025-06"
+report_period = "2025-07"
 # report_label looks like "2025-3"
-report_label = "2025-6"
+report_label = "2025-7"
 report_year = int(report_period.split("-")[0])
 report_month = int(report_period.split("-")[1])
 this_month = report_month
@@ -564,6 +564,8 @@ ic(manuf_concat)
 
 # clean up counterfill_audit_rxs table if this report is being rerun
 cursor.execute("DELETE FROM counterfill_audit_rxs WHERE pharmacy = %s AND report_period >= %s;", (pharmacy_name, report_period))
+print("clearing out old audit records for", pharmacy_name, "from", report_period, "onward")
+ic(pharmacy_name, report_period)
 print("creating TPA RX Review tab")
 tpa_headers = [
     "Rx Number",
@@ -579,7 +581,8 @@ tpa_headers = [
     "Qualifying Prescriber Name",
     "Qualifying Manufacturer",
     "Potential Covered Entity",
-    "Prescriber NPI"
+    "Prescriber NPI",
+    "Keep or Discard Reason"
 ]
 tpa_audit_tab, tpa_row = create_worksheet_with_headers(workbook, "TPA Rx Review", tpa_headers, column_widths=20, title_format=title_format)
 tpa_row = 1  # Reset to account for the return link
@@ -710,11 +713,21 @@ for doctor in qual_npi_list:
         col += 1
         tpa_audit_tab.write(tpa_row, col, prescription["prescriber_npi"])
         col += 1
-        tpa_audit_tab.write(tpa_row, col, first_audit_period)
+        
+        # get keep or discard reason from utilizations table
+        kd_query = """SELECT * FROM utilizations WHERE rx_fill_concat = %s AND report_identifier = %s LIMIT 1;"""
+        kd_inputs = (prescription["rx_fill_concat"], prescription["report_identifier"])
+        cursor.execute(kd_query, kd_inputs)
+        kd_results = cursor.fetchone()
+        if kd_results:
+            keep_discard_reason = kd_results["reason"]
+        else:
+            keep_discard_reason = "Prescription not found in TPA data set"
+        tpa_audit_tab.write(tpa_row, col, keep_discard_reason)
         col += 1
 
         tpa_row += 1
-tpa_audit_tab.autofilter(2, 0, tpa_row, len(tpa_headers)-1)
+tpa_audit_tab.autofilter(0, 0, tpa_row, len(tpa_headers)-1)
 
 
 # create TPA Rx Review - ROI tab
@@ -793,7 +806,7 @@ for roi_candidate in roi_candidates:
     roitab.write(roirow, 12, pharm_data["manufacturer"])
     roitab.write_formula(roirow, 13, f"=VLOOKUP(K{roirow+1},'Qualified Prescribers'!A:E,5,FALSE)")
     roirow += 1
-roitab.autofilter(2, 0, roirow, len(roi_headers)-1)
+roitab.autofilter(0, 0, roirow, len(roi_headers)-1)
 
 # create Medicaid plan tab
 print()
