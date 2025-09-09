@@ -15,9 +15,9 @@ import numpy
 
 starttime = datetime.datetime.now()
 # report_period looks like "2025-03"
-report_period = "2025-07"
+report_period = "2025-08"
 # report_label looks like "2025-3"
-report_label = "2025-7"
+report_label = "2025-8"
 report_year = int(report_period.split("-")[0])
 report_month = int(report_period.split("-")[1])
 this_month = report_month
@@ -1516,6 +1516,21 @@ for report_identifier in report_identifiers:
         qctab.write(qcrow, 0, "no prev accumulator file found")
         qcrow += 1
         pass
+
+    # get utilization report info if available
+    print("getting list of utilizations")
+    utilization_query = """SELECT input_file, date(timestamp), count(*) FROM utilizations WHERE report_identifier = %s and fill_date between %s and %s group by input_file, date(timestamp);"""
+    cursor.execute(utilization_query, (report_identifier["report_identifier"], report_start_date, report_end_date))
+    utilization_results = cursor.fetchall()
+    ic(utilization_results)
+    for utilization in utilization_results:
+        qctab.write(qcrow, 0, "utilization_input_file")
+        qctab.write(qcrow, 1, utilization["input_file"])
+        qctab.write(qcrow, 2, utilization["count(*)"])
+        qctab.write(qcrow, 3, report_identifier["report_identifier"])
+        qctab.write(qcrow, 4, "utilization upload "+utilization["date(timestamp)"].strftime("%Y-%m-%d"))
+        qcrow += 1
+
 qcrow += 2
 for report_identifier in report_identifiers:
     qctab.write(qcrow, 0, "report_identifier")
