@@ -715,10 +715,13 @@ for doctor in qual_npi_list:
         col += 1
         
         # get keep or discard reason from utilizations table
-        kd_query = """SELECT * FROM utilizations WHERE rx_fill_concat = %s AND report_identifier = %s LIMIT 1;"""
-        kd_inputs = (prescription["rx_fill_concat"], prescription["report_identifier"])
+        kd_query = """SELECT * FROM utilizations WHERE rx_fill_concat = %s
+            AND report_identifier IN (SELECT report_identifier FROM counterfill_meta WHERE counterfill_name = %s) LIMIT 1;"""
+        kd_inputs = (prescription["rx_fill_concat"], pharmacy_name)
         cursor.execute(kd_query, kd_inputs)
         kd_results = cursor.fetchone()
+        ic(kd_results)
+        keep_discard_reason = ""
         if kd_results:
             keep_discard_reason = kd_results["reason"]
         else:
