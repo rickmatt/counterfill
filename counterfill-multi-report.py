@@ -582,7 +582,8 @@ tpa_headers = [
     "Qualifying Manufacturer",
     "Potential Covered Entity",
     "Prescriber NPI",
-    "Keep or Discard Reason"
+    "Keep or Discard Reason",
+    "DOB"
 ]
 tpa_audit_tab, tpa_row = create_worksheet_with_headers(workbook, "TPA Rx Review", tpa_headers, column_widths=20, title_format=title_format)
 tpa_row = 1  # Reset to account for the return link
@@ -674,7 +675,6 @@ for doctor in qual_npi_list:
         col += 1
         tpa_audit_tab.write(tpa_row, col, prescription["drug_name"])
         col += 1
-        
         tpa_audit_tab.write(tpa_row, col, prescription["est_disp_fee"], money)
         col += 1
         tpa_audit_tab.write(tpa_row, col, pharm_paid_to_ce, money)
@@ -728,6 +728,7 @@ for doctor in qual_npi_list:
             keep_discard_reason = "Prescription not found in TPA data set"
         tpa_audit_tab.write(tpa_row, col, keep_discard_reason)
         col += 1
+        tpa_audit_tab.write(tpa_row, col, prescription["pat_dob"], date_format)
 
         tpa_row += 1
 tpa_audit_tab.autofilter(0, 0, tpa_row, len(tpa_headers)-1)
