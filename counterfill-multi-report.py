@@ -224,6 +224,100 @@ summarytab.write("B1", report["salesforce_report_name"], f_title)
 summarytab.write("B2", "Secure340B Counterfill Report", f_title)
 summarytab.write("B3", report_label, f_title)
 
+# create DATA file tab
+dfheaders = [
+    "Data Location",
+    "Covered Entity",
+    "Date",
+    "Rx Number",
+    "Fill Number",
+    "Rx + Fill",
+    "Fill Date",
+    "Bill Date",
+    "Pharmacy Name",
+    "NDC11",
+    "Drug Name",
+    "Last Replenished Date",
+    "Indicator",
+    "Manufacturer",
+    "Status",
+    "Quantity",
+    "Payment",
+    "Dispense Fee",
+    "Paid to CE",
+    "Est. Acquisition Cost Per Package",
+    "Est. Retail Margin",
+    "Est. Retail Margin %",
+    "Est 340B Impact",
+    "Uninsured",
+    "BIN",
+    "PCN",
+    "Group",
+    "BUPP",
+    "Packages",
+    "Prescriber NPI",
+    "Prescriber Name",
+    "CE",
+    "CE Type",
+    "TPA",
+    "Cash Impact",
+    "State",
+    "Invoicing Model",
+    "Covered Enitity - Accumulator",
+    "NDC11 - Accumulator",
+    "NDC Description",
+    "Indicator",
+    "340B Pkgs",
+    "Previous Report Packages",
+    "Est. Acq. Cost per Pkg",
+    "Ext Cost",
+    "Manufacturer",
+    "Accumulator Date",
+    "Last Replenished Date",
+    "Covered Entity - Replenishment",
+    "NDC11",
+    "NDC Description",
+    "Indicator",
+    "340B Pkgs",
+    "Est. Acq. Cost per Pkg",
+    "Ext Cost",
+    "Manufacturer",
+    "Replenishment Date",
+    "Rx Number - TPA Rx Review",
+    "Fill Number",
+    "Fill Date",
+    "NDC",
+    "Description",
+    "Est. Dispense Fee",
+    "Est. Paid to CE",
+    "Est. True Margin",
+    "Est. Pharmacy Impact",
+    "Rx Number ever 340B?",
+    "Prescriber Number",
+    "Qualifying Prescriber Name",
+    "Percent Qualified",
+    "Insurance",
+    "Qualifying Manufacturer",
+    "Potential Covered Entity",
+    "TPA Disqualification Reason",
+    "Rx Number - TPA Rx Review - ROI",
+    "Fill Number",
+    "Fill Date",
+    "NDC",
+    "Description",
+    "Total Paid Amount",
+    "Est. True Margin",
+    "Dispense Fee",
+    "Pharmacy Impact",
+    "Status",
+    "Prescriber Number",
+    "Qualifying Prescriber Name",
+    "Qualifying Manufacturer",
+    "Potential Covered Entity",
+]
+dftab, dfrow = create_worksheet_with_headers(workbook, "DATA File", dfheaders, column_widths=25, title_format=title_format)
+dfrow = 1  # Reset to account for the return link
+
 datafeedtab = workbook.add_worksheet("Data Feed Tab")
 
 # create pharmacy dispensing data tab
@@ -1017,8 +1111,88 @@ for report in report_identifiers:
         tpa_qc_tab.write(tpa_row, col, rq_results["payment_model"])
         col += 1
         tpa_qc_tab.write(tpa_row, col, claim["input_file"])
-
         tpa_row += 1
+
+
+        # write this row to DATA feed tab
+        dfcol = 0
+        dftab.write(dfrow, dfcol, "Invoices")
+        dfcol += 1
+        dftab.write(dfrow, dfcol, ce_results["covered_entity"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["bill_date"], date_format)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["rx_number"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["fill_number"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["rx_fill_concat"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["fill_date"], date_format)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["bill_date"], date_format)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["pharmacy_name"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["ndc"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["drug_name"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, last_replenished_date["max(replenishment_date)"], date_format)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["indicator"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, manuf)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["status"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["qty_replenished"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["transaction_payment"], money)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["disp_fee"], money)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["revenue"], money)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["pkg_cost"], money)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["retail_margin"], money)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, est_ret_marg_pct, pct_format2)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, est_340b_impact, money)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["uninsured"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["bin"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["pcn"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["rx_group"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["bupp"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, round(pkgs_replenished, 2))
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["prescriber_npi"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, prescriber_name)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, ce_results["covered_entity"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, rq_results["ce_type"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, claim["tpa"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, round(cash_impact, 2), money)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, rq_results["ce_state"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, rq_results["payment_model"])
+        dfcol += 1
+
+        dfrow += 1
+
     
 tpa_qc_tab.autofilter(0, 0, tpa_row, len(tpa_headers)-1)
 tpa_qc_tab.set_column(34, 34, None, None, {'hidden': 1})
@@ -1261,7 +1435,8 @@ for report in report_identifiers:
             prev_accum_result = cursor.fetchone()
             accumtab.write(accum_row, col, prev_accum_result["prev_pkgs"])
         else:
-            accumtab.write(accum_row, col, 0)
+            prev_accum_result["prev_pkgs"] = 0
+            accumtab.write(accum_row, col, prev_accum_result["prev_pkgs"])
         col += 1
         accumtab.write(accum_row, col, accumulator["wac_price"], money)
         col += 1
@@ -1276,6 +1451,41 @@ for report in report_identifiers:
         accumtab.write(accum_row, col, accumulator["input_file"])
 
         accum_row += 1
+
+        # write this row to DATA feed tab
+        dfcol = 0
+        dftab.write(dfrow, dfcol, "Accumulator")
+        dfcol += 1
+        dftab.write(dfrow, dfcol, covered_entity)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, accumulator["accumulator_date"], date_format)
+        dfcol = 37
+        dftab.write(dfrow, dfcol, covered_entity)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, accumulator["ndc11"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, accumulator["drug_name"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, indicator)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, accumulator["num_pkgs"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, prev_accum_result["prev_pkgs"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, accumulator["wac_price"], money)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, accumulator["extended_cost"], money)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, accumulator["manufacturer"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, accumulator["accumulator_date"], date_format)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, accumulator["last_replenishment_date"], date_format)
+        dfcol += 1
+
+        dfrow += 1
+
+
 accumtab.autofilter(0, 0, accum_row, len(accum_headers)-1)
 accumtab.set_column(11, 11, None, None, {'hidden': 1})
 
@@ -1340,6 +1550,35 @@ for report in report_identifiers:
         purchtab.write(purch_row, col, purchase["replenishment_date"], date_format)
         col += 1
         purchtab.write(purch_row, col, purchase["input_file"])
+
+        # write this row to DATA feed tab
+        dfcol = 0
+        dftab.write(dfrow, dfcol, "Replenishments")
+        dfcol += 1
+        dftab.write(dfrow, dfcol, covered_entity)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, purchase["replenishment_date"], date_format)
+        dfcol = 48
+        dftab.write(dfrow, dfcol, covered_entity)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, purchase["ndc11"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, purchase["drug_name"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, purchase["indicator"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, purchase["num_pkgs"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, purchase["wac_price"], money)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, purchase["extended_cost"], money)
+        dfcol += 1
+        dftab.write(dfrow, dfcol, purchase["manufacturer"])
+        dfcol += 1
+        dftab.write(dfrow, dfcol, purchase["replenishment_date"], date_format)
+        dfcol += 1
+
+        dfrow += 1
 
 
         purch_row += 1
