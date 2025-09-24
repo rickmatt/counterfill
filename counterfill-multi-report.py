@@ -505,7 +505,7 @@ qprow = 1  # Reset to account for the return link
 doctors = []
 for report in report_identifiers:
     doctor_query = f"""SELECT DISTINCT prescriber_npi FROM 340b_claims
-        WHERE report_identifier = %s and fill_date BETWEEN %s AND %s;"""
+        WHERE report_identifier = %s and bill_date BETWEEN %s AND %s;"""
     doctor_inputs = (report['report_identifier'], report_start_date, report_end_date)
     cursor.execute(doctor_query, doctor_inputs)
     physicians = cursor.fetchall()
@@ -919,8 +919,23 @@ for roi_candidate in roi_candidates:
     roitab.write(roirow, 10, pharm_data["prescriber_npi"])
     roitab.write(roirow, 11, pharm_data["prescriber_name"])
     roitab.write(roirow, 12, pharm_data["manufacturer"])
-    # @TODO: change this to lookup from NPI instead of Qualified Prescribers tab
-    roitab.write_formula(roirow, 13, f"=VLOOKUP(K{roirow+1},'Qualified Prescribers'!A:E,5,FALSE)")
+    # get the standard ce name from counterfill_meta
+    if roi340b_data:
+        ce_name = get_covered_entity_name(roi340b_data["report_identifier"])
+        roitab.write(roirow, 13, ce_name)
+    else:
+        ce_name = ""
+        ce_query1 = """SELECT * from 340b_claims WHERE prescriber_npi = %s
+            AND report_identifier IN (SELECT report_identifier FROM counterfill_meta WHERE counterfill_name = %s)
+            LIMIT 1;"""
+        ce_inputs1 = (pharm_data["prescriber_npi"], pharmacy_name)
+        cursor.execute(ce_query1, ce_inputs1)
+        ce_results1 = cursor.fetchone()
+        if ce_results1:
+            ce_name = get_covered_entity_name(ce_results1["report_identifier"])
+            roitab.write(roirow, 13, ce_name)
+        else:
+            roitab.write(roirow, 13, "Not found")
     roirow += 1
 roitab.autofilter(0, 0, roirow, len(roi_headers)-1)
 
