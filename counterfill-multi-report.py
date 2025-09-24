@@ -699,6 +699,23 @@ ic(qms_list)
 audit_skips = 0
 for doctor in qual_npi_list:
     ic(doctor)
+    # get doctor_report_identifier
+    doctor_report_identifier = ""
+    dr_query = """SELECT report_identifier 
+        FROM 340b_claims 
+        WHERE prescriber_npi = %s
+            AND fill_date BETWEEN %s AND %s 
+            AND report_identifier IN (
+                SELECT report_identifier 
+                FROM counterfill_meta 
+                WHERE counterfill_name = %s) LIMIT 1;"""
+    dr_inputs = (doctor, report_start_date, report_end_date, pharmacy_name)
+    cursor.execute(dr_query, dr_inputs)
+    dr_results = cursor.fetchone()
+    ic(dr_results)
+    if dr_results:
+        doctor_report_identifier = dr_results["report_identifier"]
+    ic(doctor_report_identifier)
     prescription_query = """SELECT * FROM counterfill_claims where prescriber_npi = %s
         AND pharmacy_name = %s
         AND fill_date BETWEEN %s AND %s
@@ -810,8 +827,8 @@ for doctor in qual_npi_list:
         
         # get keep or discard reason from utilizations table
         kd_query = """SELECT * FROM utilizations WHERE rx_fill_concat = %s
-            AND report_identifier IN (SELECT report_identifier FROM counterfill_meta WHERE counterfill_name = %s) LIMIT 1;"""
-        kd_inputs = (prescription["rx_fill_concat"], pharmacy_name)
+            AND report_identifier = %s LIMIT 1;"""
+        kd_inputs = (prescription["rx_fill_concat"], doctor_report_identifier)
         cursor.execute(kd_query, kd_inputs)
         kd_results = cursor.fetchone()
         ic(kd_results)
@@ -902,6 +919,7 @@ for roi_candidate in roi_candidates:
     roitab.write(roirow, 10, pharm_data["prescriber_npi"])
     roitab.write(roirow, 11, pharm_data["prescriber_name"])
     roitab.write(roirow, 12, pharm_data["manufacturer"])
+    # @TODO: change this to lookup from NPI instead of Qualified Prescribers tab
     roitab.write_formula(roirow, 13, f"=VLOOKUP(K{roirow+1},'Qualified Prescribers'!A:E,5,FALSE)")
     roirow += 1
 roitab.autofilter(0, 0, roirow, len(roi_headers)-1)
@@ -1283,8 +1301,8 @@ for report in report_identifiers:
         cursor.execute(dispensed_query, dispensed_inputs)
         dispensed_result = cursor.fetchone()
         dispensed_packages = 0
-        ic(drug_data)
-        ic(dispensed_inputs)
+        #ic(drug_data)
+        #ic(dispensed_inputs)
         dispensed_packages = float(dispensed_result["qty_replenished"])/float(drug_data["bupp"]) if drug_data["bupp"] else 0
 
         # get replenished packages
