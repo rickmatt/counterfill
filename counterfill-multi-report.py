@@ -939,6 +939,58 @@ for roi_candidate in roi_candidates:
     roirow += 1
 roitab.autofilter(0, 0, roirow, len(roi_headers)-1)
 
+# create Cash Impact tab
+print("creating Cash Impact tab")
+cashtab = workbook.add_worksheet("Cash Plan Risk Review")
+cashtab.set_tab_color("81A3A7")
+cashtab.merge_range("A1:H1", "Cash Recently Reversed")
+cashtab.merge_range("J1:P1", "Currently Unqualified Cash Claims")
+cashtab.write("A2", "Rx Number", title_format)
+cashtab.write("B2", "Fill Number", title_format)
+cashtab.write("C2", "Fill Date", title_format)
+cashtab.write("D2", "NDC11", title_format)
+cashtab.write("E2", "Drug Name", title_format)
+cashtab.write("F2", "Total Payment", title_format)
+cashtab.write("G2", "Acquisition Cost", title_format)
+cashtab.write("H2", "Dispensed by Pharmacy", title_format)
+
+cashtab.write("J2", "Rx Number", title_format)
+cashtab.write("K2", "Fill Number", title_format)
+cashtab.write("L2", "Fill Date", title_format)
+cashtab.write("M2", "NDC11", title_format)
+cashtab.write("N2", "Drug Name", title_format)
+cashtab.write("O2", "Total Payment", title_format)
+cashtab.write("P2", "Acquisition Cost", title_format)
+
+unins_rev_sql = """SELECT * FROM 340b_claims WHERE 
+    uninsured = 'YES'
+    AND bill_date BETWEEN %s AND %s
+    AND pkgs_disp < 0
+    AND report_identifier IN (SELECT report_identifier FROM counterfill_meta WHERE counterfill_name = %s)
+    ORDER BY fill_date DESC;"""
+unins_rev_inputs = (report_start_date, report_end_date, pharmacy_name)
+cursor.execute(unins_rev_sql, unins_rev_inputs)
+unins_rev_claims = cursor.fetchall()
+unins_rev_row = 2
+for unins_rev_claim in unins_rev_claims:
+    col = 0
+    cashtab.write(unins_rev_row, col, unins_rev_claim["rx_number"])
+    col += 1
+    cashtab.write(unins_rev_row, col, unins_rev_claim["fill_number"])
+    col += 1
+    cashtab.write(unins_rev_row, col, unins_rev_claim["fill_date"], date_format)
+    col += 1
+    cashtab.write(unins_rev_row, col, unins_rev_claim["ndc"])
+    col += 1
+    cashtab.write(unins_rev_row, col, unins_rev_claim["drug_name"])
+    col += 1
+    cashtab.write(unins_rev_row, col, unins_rev_claim["total_payment"], money)
+    col += 1
+    cashtab.write(unins_rev_row, col, unins_rev_claim["ce_cost"], money)
+    col += 1
+    unins_rev_row += 1
+
+
 # create Medicaid plan tab
 print()
 medicaidheaders = ["Plan Name", "BIN", "PCN", "Group","Concat","State"]
