@@ -15,9 +15,9 @@ import numpy
 
 starttime = datetime.datetime.now()
 # report_period looks like "2025-03"
-report_period = "2025-08"
+report_period = "2025-09"
 # report_label looks like "2025-3"
-report_label = "2025-8"
+report_label = "2025-9"
 report_year = int(report_period.split("-")[0])
 report_month = int(report_period.split("-")[1])
 this_month = report_month
@@ -669,9 +669,10 @@ tpa_headers = [
     "Description",
     "Est. Dispense Fee",
     "Est. Paid to CE",
-    "Est. True Margin",
+    "Est. Tru Margin",
     "Pharmacy Impact",
     "Rx Number ever 340B?",
+    "NDC Ever 340B?",
     "Qualifying Prescriber Name",
     "Qualifying Manufacturer",
     "Potential Covered Entity",
@@ -740,9 +741,11 @@ for doctor in qual_npi_list:
         if prescription["manufacturer"] not in qms_list:
             print(f"{prescription["manufacturer"]} not in manuf list")
             continue
-        q_for_340b = """SELECT * FROM 340b_claims WHERE rx_fill_concat = %s AND prescriber_npi = %s;"""
+        q_for_340b = """SELECT * FROM 340b_claims 
+            WHERE rx_fill_concat = %s 
+            AND report_identifier IN (SELECT report_identifier FROM counterfill_meta WHERE counterfill_name = %s);"""
         # ic(doctor)
-        q_for_340b_inputs = (prescription["rx_fill_concat"], doctor)
+        q_for_340b_inputs = (prescription["rx_fill_concat"], pharmacy_name)
         cursor.execute(q_for_340b, q_for_340b_inputs)
         q_for_340b_results = cursor.fetchone()
         # ic(q_for_340b_results)
@@ -809,6 +812,23 @@ for doctor in qual_npi_list:
             tpa_audit_tab.write(tpa_row, col, "NO")
             ce = ""
         col += 1
+
+        ever_ndc_query = """SELECT * 
+                FROM 340b_claims 
+                WHERE ndc = %s 
+                AND report_identifier IN (SELECT report_identifier 
+                FROM counterfill_meta 
+                WHERE counterfill_name = %s) 
+                ORDER BY fill_date DESC LIMIT 1;"""
+        ever_ndc_inputs = (prescription["ndc11"], pharmacy_name)
+        cursor.execute(ever_ndc_query, ever_ndc_inputs)
+        ever_ndc_results = cursor.fetchone()
+        ic(ever_ndc_results)
+        if ever_ndc_results:
+            tpa_audit_tab.write(tpa_row, col, ever_ndc_results["fill_date"], date_format)
+        else:
+            tpa_audit_tab.write(tpa_row, col, "NO")
+        col += 1
         tpa_audit_tab.write(tpa_row, col, prescription["prescriber_name"])
         col += 1
         
@@ -820,7 +840,7 @@ for doctor in qual_npi_list:
             tpa_audit_tab.write(tpa_row, col, ce)
         else:
             # change this to lookup from NPI instead of Qualified Manufacturers
-            tpa_audit_tab.write_formula(tpa_row, col, f"=VLOOKUP(N{tpa_row+1},'Qualified Prescribers'!A:E,5,FALSE)")
+            tpa_audit_tab.write_formula(tpa_row, col, f"=VLOOKUP(O{tpa_row+1},'Qualified Prescribers'!A:E,5,FALSE)")
         col += 1
         tpa_audit_tab.write(tpa_row, col, prescription["prescriber_npi"])
         col += 1
@@ -864,12 +884,18 @@ roi_headers = ["Rx Number",
 roitab, roirow = create_worksheet_with_headers(workbook, "TPA Rx Review - ROI Tab", roi_headers, column_widths=20, title_format=title_format)
 roirow = 1  # Reset to account for the return link
 # get the list of roi candidates
-roi_query = """SELECT * FROM counterfill_audit_rxs WHERE pharmacy = %s ORDER BY rx_fill_num ASC;"""
-roi_inputs = (pharmacy_name,)
+roi_query = """SELECT * FROM counterfill_audit_rxs 
+    WHERE pharmacy = %s
+    AND report_period < %s
+    ORDER BY rx_fill_num ASC;"""
+roi_inputs = (pharmacy_name, report_period)
 cursor.execute(roi_query, roi_inputs)
 roi_candidates = cursor.fetchall()
 print(len(roi_candidates), "roi candidates found")
 for roi_candidate in roi_candidates:
+    if roi_candidate["status"] == "340B" and roi_candidate["status_date"] < report_period:
+        print(f"Skipping {roi_candidate['rx_fill_num']} - already 340B")
+        continue
     # get pharm_data prescription info
     pharm_query = """SELECT * FROM counterfill_claims WHERE pharmacy_name = %s AND rx_fill_concat = %s;"""
     pharm_inputs = (pharmacy_name, roi_candidate["rx_fill_num"])
@@ -879,8 +905,11 @@ for roi_candidate in roi_candidates:
         print(f"Skipping {roi_candidate['rx_fill_num']} - no pharm_data found")
         continue
     # get 340B claim info
-    roi340b_query = """SELECT * FROM 340b_claims WHERE rx_fill_concat = %s AND prescriber_npi = %s ORDER BY fill_date DESC LIMIT 1;"""
-    roi340b_inputs = (roi_candidate["rx_fill_num"], pharm_data["prescriber_npi"])
+    roi340b_query = """SELECT * FROM 340b_claims 
+        WHERE rx_fill_concat = %s 
+        AND report_identifier IN (SELECT report_identifier FROM counterfill_meta WHERE counterfill_name = %s) 
+        ORDER BY fill_date DESC LIMIT 1;"""
+    roi340b_inputs = (roi_candidate["rx_fill_num"], pharmacy_name)
     cursor.execute(roi340b_query, roi340b_inputs)
     roi340b_data = cursor.fetchone()
     if roi340b_data is None:
@@ -989,6 +1018,46 @@ for unins_rev_claim in unins_rev_claims:
     cashtab.write(unins_rev_row, col, unins_rev_claim["ce_cost"], money)
     col += 1
     unins_rev_row += 1
+
+# get pharm claims that are uninsured and not 340B qualified
+unins_sql = """SELECT * FROM counterfill_claims WHERE 
+    uninsured = 'yes'
+    AND fill_date BETWEEN %s AND %s
+    AND pharmacy_name = %s
+    ORDER BY fill_date DESC;"""
+unins_inputs = (report_start_date, report_end_date, pharmacy_name)
+cursor.execute(unins_sql, unins_inputs)
+unins_claims = cursor.fetchall()
+unins_row = 2
+for unins_claim in unins_claims:
+    # check to see if this claim is already 340B qualified
+    q_for_340b = """SELECT * FROM 340b_claims WHERE rx_fill_concat = %s AND prescriber_npi = %s;"""
+    q_for_340b_inputs = (unins_claim["rx_fill_concat"], unins_claim["prescriber_npi"])
+    cursor.execute(q_for_340b, q_for_340b_inputs)
+    q_for_340b_results = cursor.fetchone()
+    # don't include this claim in list if it is already 340B Qualified.
+    print(f"Looking at {unins_claim['rx_fill_concat']}")
+    if q_for_340b_results:
+        print(f"Skipping {unins_claim['rx_fill_concat']} - already 340B qualified")
+        continue
+    col = 9
+    cashtab.write(unins_row, col, unins_claim["rx_number"])
+    col += 1
+    cashtab.write(unins_row, col, unins_claim["fill_number"])
+    col += 1
+    cashtab.write(unins_row, col, unins_claim["fill_date"], date_format)
+    col += 1
+    cashtab.write(unins_row, col, unins_claim["ndc11"])
+    col += 1
+    cashtab.write(unins_row, col, unins_claim["drug_name"])
+    col += 1
+    cashtab.write(unins_row, col, unins_claim["total_payment"], money)
+    col += 1
+    cashtab.write(unins_row, col, unins_claim["drug_cost"], money)
+    col += 1
+    unins_row += 1
+
+
 
 
 # create Medicaid plan tab
